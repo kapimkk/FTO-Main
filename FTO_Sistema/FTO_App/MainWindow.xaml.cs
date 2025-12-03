@@ -5,19 +5,16 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
-using AutoUpdaterDotNET; // Biblioteca de atualização
 
 namespace FTO_App
 {
     public partial class MainWindow : Window
     {
-        // Versao do aplicativo
-        private const string localVersion = "1.0.2";
+        private const string localVersion = "1.0";
         private long? _editingId = null;
         private string _loggedUser = string.Empty;
         private int _currentPage = 1;
@@ -26,42 +23,25 @@ namespace FTO_App
         private string _currentFilter = "";
         private bool _isDarkTheme = false;
 
-        // --- CONSTRUTOR (Inicia o sistema) ---
+        // INIT
         public MainWindow()
         {
             InitializeComponent();
             this.Title = ($"FTO - Painel de Acesso {localVersion}");
 
-            // Lógica de Inicialização movida para o local correto (dentro do construtor)
             try 
             { 
                 Database.InitTables(); 
             } 
             catch (Exception ex) 
             { 
-                MessageBox.Show($"Erro crítico ao criar banco de dados: {ex.Message}\n\nVerifique se a pasta tem permissão de escrita.", "Erro Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Erro crítico ao criar banco de dados: {ex.Message}", "Erro Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             
             if (DpData != null)
                 DpData.SelectedDate = DateTime.Today;
 
             PopulateDateFilters();
-
-            // Configuração Opcional do Atualizador ao iniciar
-            AutoUpdater.RunUpdateAsAdmin = true;
-        }
-        // --- FIM DO CONSTRUTOR ---
-
-
-        // --- SEU NOVO BOTÃO DE ATUALIZAÇÃO (Agora no lugar certo) ---
-        private void ButtonAtualizar_Click(object sender, RoutedEventArgs e)
-        {   
-            AutoUpdater.RunUpdateAsAdmin = true;
-            
-            // Link RAW fornecido por você
-            string linkDoXml = "https://raw.githubusercontent.com/kapimkk/FTO-App/main/update.xml";
-            
-            AutoUpdater.Start(linkDoXml);
         }
 
         private void PopulateDateFilters()
@@ -83,7 +63,6 @@ namespace FTO_App
             CbFiltroAno.SelectionChanged += (s, e) => { _currentPage = 1; LoadData(); };
         }
 
-        // --- BOTÃO DE AUTO-AJUSTE DA TABELA ---
         private void BtnAutoFit_Click(object sender, RoutedEventArgs e)
         {
             foreach (var column in GridVendas.Columns)
@@ -95,6 +74,7 @@ namespace FTO_App
             }
         }
 
+        // THEME
         private void BtnToggleTheme_Click(object sender, RoutedEventArgs e)
         {
             _isDarkTheme = !_isDarkTheme;
@@ -108,20 +88,16 @@ namespace FTO_App
                 SetColor("BorderBrush", "#444444");
                 SetColor("InputBackgroundBrush", "#3E3E42");
                 SetColor("ProfitBackgroundBrush", "#1B5E20");
-                
                 SetColor("GridHeaderBrush", "#252526");
                 SetColor("GridHeaderForeground", "#DDDDDD");
                 SetColor("RowBackgroundBrush", "#2D2D30");
                 SetColor("GridAltRowBrush", "#333337");
                 SetColor("GridLinesBrush", "#404040");
-                
                 SetColor("PositiveBrush", "#81C784");
                 SetColor("NegativeBrush", "#E57373");
-
                 SetColor("ActionPayBg", "#1B5E20"); SetColor("ActionPayFg", "#A5D6A7");
                 SetColor("ActionEditBg", "#0D47A1"); SetColor("ActionEditFg", "#90CAF9");
                 SetColor("ActionDelBg", "#B71C1C"); SetColor("ActionDelFg", "#EF9A9A");
-
                 BtnTheme.Content = "☀️ Claro";
             }
             else
@@ -134,20 +110,16 @@ namespace FTO_App
                 SetColor("BorderBrush", "#CCCCCC");
                 SetColor("InputBackgroundBrush", "#FFFFFF");
                 SetColor("ProfitBackgroundBrush", "#F1F8E9");
-                
                 SetColor("GridHeaderBrush", "#E0E0E0");
                 SetColor("GridHeaderForeground", "#000000");
                 SetColor("RowBackgroundBrush", "#FFFFFF");
                 SetColor("GridAltRowBrush", "#FAFAFA");
                 SetColor("GridLinesBrush", "#D0D0D0");
-
                 SetColor("PositiveBrush", "#2E7D32");
                 SetColor("NegativeBrush", "#C62828");
-
                 SetColor("ActionPayBg", "#E8F5E9"); SetColor("ActionPayFg", "#2E7D32");
                 SetColor("ActionEditBg", "#E3F2FD"); SetColor("ActionEditFg", "#1565C0");
                 SetColor("ActionDelBg", "#FFEBEE"); SetColor("ActionDelFg", "#C62828");
-
                 BtnTheme.Content = "🌙 Tema";
             }
         }
@@ -170,102 +142,50 @@ namespace FTO_App
             }
         }
 
+        // PARSERS
         private object GetDbValue(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return DBNull.Value;
             return text.Trim();
         }
 
-        // --- SUPER PARSER DE DATAS 2.0 (MODO BRUTO) ---
         private DateTime ParseDbDate(object value)
         {
             if (value == null || value == DBNull.Value) return DateTime.Today;
-            
             string dateStr = value.ToString()?.Trim() ?? "";
             if (string.IsNullOrEmpty(dateStr)) return DateTime.Today;
-
-            if (dateStr.Contains("."))
-            {
-                int dotIndex = dateStr.LastIndexOf('.');
-                if (dotIndex > 10) 
-                {
-                    dateStr = dateStr.Substring(0, dotIndex);
-                }
-            }
 
             if (DateTime.TryParse(dateStr, new CultureInfo("pt-BR"), DateTimeStyles.None, out DateTime dtResult)) return dtResult;
             if (DateTime.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out dtResult)) return dtResult;
 
-            string[] formats = { 
-                "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd", 
-                "dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy",
-                "MM/dd/yyyy HH:mm:ss", "MM/dd/yyyy",
-                "yyyy/MM/dd"
-            };
-
+            string[] formats = { "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy", "yyyy/MM/dd" };
             if (DateTime.TryParseExact(dateStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out dtResult)) return dtResult;
-
-            try 
-            {
-                string cleanDate = dateStr.Split(' ')[0].Replace("T", "");
-                char[] splitters = new char[] { '-', '/', '.' };
-                string[] parts = cleanDate.Split(splitters);
-
-                if (parts.Length == 3)
-                {
-                    int p1 = int.Parse(parts[0]);
-                    int p2 = int.Parse(parts[1]);
-                    int p3 = int.Parse(parts[2]);
-
-                    if (p1 > 1900 && p2 <= 12 && p3 <= 31) return new DateTime(p1, p2, p3);
-                    if (p3 > 1900 && p2 <= 12 && p1 <= 31) return new DateTime(p3, p2, p1);
-                    if (p3 > 1900 && p1 <= 12 && p2 <= 31) return new DateTime(p3, p1, p2);
-                }
-            }
-            catch { }
-
-            if (double.TryParse(dateStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double dateNum))
-            {
-                try { return DateTime.FromOADate(dateNum); } catch {}
-            }
 
             return DateTime.Today;
         }
 
-        // --- PARSER DE DINHEIRO INTELIGENTE ---
         private decimal ParseMoney(object? value)
         {
             if (value == null || value == DBNull.Value) return 0;
-            
             string text = value.ToString() ?? "";
             if (string.IsNullOrWhiteSpace(text)) return 0;
 
             try
             {
                 string clean = text.Replace("R$", "").Trim();
-
                 if (clean.Contains(","))
                 {
                     clean = clean.Replace(".", ""); 
                     return decimal.Parse(clean, new CultureInfo("pt-BR"));
                 }
-                else if (clean.Contains("."))
-                {
-                    return decimal.Parse(clean, CultureInfo.InvariantCulture);
-                }
-                else 
-                {
-                    return decimal.Parse(clean);
-                }
+                return decimal.Parse(clean.Replace(".", ""), CultureInfo.InvariantCulture);
             }
-            catch 
-            {
-                return 0; 
-            }
+            catch { return 0; }
         }
 
         private decimal ParseUiMoney(string? text) => ParseMoney(text);
 
+        // LOGIN
         private void BtnLogin_Click(object sender, RoutedEventArgs e)
         {
             string u = TxtLoginUser.Text;
@@ -309,40 +229,7 @@ namespace FTO_App
             catch { ShowError("Usuário já existe."); }
         }
 
-        // MANTIVE ESSE CÓDIGO ANTIGO, MAS RECOMENDO USAR O "ButtonAtualizar_Click"
-        private void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
-        {
-            // Se você quiser que o botão antigo use a nova lógica, descomente a linha abaixo e apague o resto:
-             ButtonAtualizar_Click(sender, e);
-             return; 
-
-            /* CÓDIGO ANTIGO DO FTO_UPDATER.EXE (DESATIVADO PARA EVITAR CONFLITO)
-            string updaterPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FTO_Updater.exe");
-            if (System.IO.File.Exists(updaterPath)) 
-            {
-                try 
-                {
-                    int currentPid = Process.GetCurrentProcess().Id;
-                    ProcessStartInfo info = new ProcessStartInfo();
-                    info.FileName = updaterPath;
-                    info.Arguments = currentPid.ToString();
-                    info.UseShellExecute = true; 
-                    info.Verb = "runas"; 
-                    Process.Start(info);
-                    Application.Current.Shutdown();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Erro ao iniciar atualizador: " + ex.Message);
-                }
-            }
-            else 
-            {
-                MessageBox.Show("Atualizador não encontrado.");
-            }
-            */
-        }
-
+        // NAV
         private void BtnGoToSales_Click(object sender, RoutedEventArgs e)
         {
             SelectionGrid.Visibility = Visibility.Collapsed;
@@ -368,6 +255,7 @@ namespace FTO_App
             this.Title = $"FTO - Seleção de Módulo {localVersion}";
         }
 
+        // SALES LOGIC
         private void LoadClients()
         {
             CbCliente.Items.Clear();
@@ -507,7 +395,6 @@ namespace FTO_App
             decimal totV = 0, totG = 0;
 
             string whereDate = "";
-            
             if (CbFiltroMes != null && CbFiltroMes.SelectedIndex > 0)
             {
                 string monthStr = CbFiltroMes.SelectedIndex.ToString("00");
@@ -556,25 +443,17 @@ namespace FTO_App
                         }
                     }
                     
-                    string sumSql = $"SELECT Venda, Gastos FROM Vendas {where}";
+                    string sumSql = $"SELECT SUM(Venda), SUM(Gastos) FROM Vendas {where}";
                     var cmdSum = new SQLiteCommand(sumSql, conn);
                     if (!string.IsNullOrEmpty(_currentFilter)) cmdSum.Parameters.AddWithValue("@q", $"%{_currentFilter}%");
                     
-                    try
+                    using(var r = cmdSum.ExecuteReader())
                     {
-                        using(var r = cmdSum.ExecuteReader())
-                        {
-                            while(r.Read())
-                            {
-                                totV += ParseMoney(r["Venda"]);
-                                totG += ParseMoney(r["Gastos"]);
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        totV = list.Sum(x => x.VendaValor);
-                        totG = list.Sum(x => x.Gastos);
+                         if(r.Read())
+                         {
+                             totV = r.IsDBNull(0) ? 0 : r.GetDecimal(0);
+                             totG = r.IsDBNull(1) ? 0 : r.GetDecimal(1);
+                         }
                     }
                 }
 
@@ -599,7 +478,6 @@ namespace FTO_App
             if (GridVendas.SelectedItem is Venda v)
             {
                 _editingId = v.Id;
-                
                 CbCliente.Text = v.Cliente ?? "";
                 TxtContato.Text = v.Contato ?? "";
                 DpData.SelectedDate = v.Data;
@@ -676,11 +554,10 @@ namespace FTO_App
         private void BtnPrevPage_Click(object sender, RoutedEventArgs e) { if(_currentPage > 1) { _currentPage--; LoadData(); } }
         private void BtnNextPage_Click(object sender, RoutedEventArgs e) { if(_currentPage < _totalPages) { _currentPage++; LoadData(); } }
 
-        // --- ORDEM DE COLUNAS EXCEL ATUALIZADA (1.0.2) ---
+        // EXCEL
         private void BtnExportExcel_Click(object sender, RoutedEventArgs e)
         {
             string fileName = "Vendas_Total";
-            
             bool mesSelecionado = CbFiltroMes != null && CbFiltroMes.SelectedIndex > 0;
             bool anoSelecionado = CbFiltroAno != null && CbFiltroAno.SelectedIndex > 0;
 
@@ -701,8 +578,6 @@ namespace FTO_App
                     using (var wb = new XLWorkbook())
                     {
                         var ws = wb.Worksheets.Add("Vendas");
-                        
-                        // CABEÇALHOS NA ORDEM PEDIDA
                         ws.Cell(1, 1).Value = "ID";
                         ws.Cell(1, 2).Value = "Cliente";
                         ws.Cell(1, 3).Value = "Contato";
@@ -733,7 +608,6 @@ namespace FTO_App
                                 ws.Cell(row, 3).Value = item.Contato;
                                 ws.Cell(row, 4).Value = item.Data;
                                 
-                                // GASTOS / VENDA / LUCROS (Colunas 5, 6, 7)
                                 ws.Cell(row, 5).Value = item.Gastos;
                                 ws.Cell(row, 5).Style.NumberFormat.Format = "R$ #,##0.00";
                                 
@@ -757,11 +631,12 @@ namespace FTO_App
                 }
                 catch (Exception ex) 
                 { 
-                    ShowError($"Erro ao exportar: {ex.Message}\n\nDetalhes: {ex.StackTrace}"); 
+                    ShowError($"Erro ao exportar: {ex.Message}"); 
                 }
             }
         }
 
+        // CLIENTS
         public class ClienteModel {
             public long Id { get; set; }
             public string Nome { get; set; } = string.Empty;

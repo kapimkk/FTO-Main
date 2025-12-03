@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
-        Title="FTO - Painel de Acesso 1.0.2" Height="720" Width="1024"
+        Title="FTO - Painel de Acesso 1.0" Height="720" Width="1024"
         WindowStartupLocation="CenterScreen" WindowState="Maximized"
         Background="{DynamicResource WindowBackgroundBrush}" FontFamily="Segoe UI"
         Icon="icons/fto.ico">
@@ -85,66 +85,26 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <ToggleButton Name="ToggleButton"
-                                          Grid.Column="2"
-                                          Focusable="false"
-                                          IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press">
+                            <ToggleButton Name="ToggleButton" Grid.Column="2" Focusable="false" IsChecked="{Binding Path=IsDropDownOpen,Mode=TwoWay,RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="Border"
-                                                CornerRadius="3"
-                                                Background="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=Background}"
-                                                BorderBrush="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=BorderBrush}"
-                                                BorderThickness="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=BorderThickness}">
+                                        <Border x:Name="Border" CornerRadius="3" Background="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=Background}" BorderBrush="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=BorderBrush}" BorderThickness="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=BorderThickness}">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition />
                                                     <ColumnDefinition Width="20" />
                                                 </Grid.ColumnDefinitions>
-                                                <Path Grid.Column="1"
-                                                      HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center"
-                                                      Data="M 0 0 L 4 4 L 8 0 Z"
-                                                      Fill="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=Foreground}" />
+                                                <Path Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M 0 0 L 4 4 L 8 0 Z" Fill="{Binding RelativeSource={RelativeSource AncestorType=ComboBox}, Path=Foreground}" />
                                             </Grid>
                                         </Border>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
-                            <ContentPresenter Name="ContentSite"
-                                              IsHitTestVisible="False"
-                                              Content="{TemplateBinding SelectionBoxItem}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                              Margin="6,3,23,3"
-                                              VerticalAlignment="Center"
-                                              HorizontalAlignment="Left" />
-                            <TextBox x:Name="PART_EditableTextBox"
-                                     Style="{x:Null}"
-                                     HorizontalAlignment="Left"
-                                     VerticalAlignment="Center"
-                                     Margin="6,3,23,3"
-                                     Focusable="True"
-                                     Background="Transparent"
-                                     Foreground="{TemplateBinding Foreground}"
-                                     BorderThickness="0"
-                                     Visibility="Hidden"
-                                     IsReadOnly="{TemplateBinding IsReadOnly}"/>
-                            <Popup Name="Popup"
-                                   Placement="Bottom"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
-                                   PopupAnimation="Slide">
-                                <Grid Name="DropDown"
-                                      SnapsToDevicePixels="True"
-                                      MinWidth="{TemplateBinding ActualWidth}"
-                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                    <Border x:Name="DropDownBorder"
-                                            Background="{DynamicResource CardBackgroundBrush}"
-                                            BorderThickness="1"
-                                            BorderBrush="{DynamicResource BorderBrush}">
+                            <ContentPresenter Name="ContentSite" IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" Margin="6,3,23,3" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                            <TextBox x:Name="PART_EditableTextBox" Style="{x:Null}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6,3,23,3" Focusable="True" Background="Transparent" Foreground="{TemplateBinding Foreground}" BorderThickness="0" Visibility="Hidden" IsReadOnly="{TemplateBinding IsReadOnly}"/>
+                            <Popup Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                <Grid Name="DropDown" SnapsToDevicePixels="True" MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border x:Name="DropDownBorder" Background="{DynamicResource CardBackgroundBrush}" BorderThickness="1" BorderBrush="{DynamicResource BorderBrush}">
                                         <ScrollViewer Margin="4,6,4,6" SnapsToDevicePixels="True">
                                             <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained" />
                                         </ScrollViewer>
@@ -178,15 +138,8 @@
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ComboBoxItem">
-                                    <Border x:Name="Bd"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="{TemplateBinding BorderThickness}"
-                                            Background="{TemplateBinding Background}"
-                                            Padding="{TemplateBinding Padding}"
-                                            SnapsToDevicePixels="true">
-                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                    <Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
+                                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
@@ -272,14 +225,7 @@
 
     <Grid>
         <Grid x:Name="LoginGrid" Background="#262626" Visibility="Visible" Panel.ZIndex="100">
-            <Border Background="{DynamicResource CardBackgroundBrush}"
-                    Width="350"
-                    Height="350"
-                    CornerRadius="8"
-                    Padding="20"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center">
-                
+            <Border Background="{DynamicResource CardBackgroundBrush}" Width="350" Height="350" CornerRadius="8" Padding="20" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="20" Opacity="0.4"/>
                 </Border.Effect>
@@ -292,14 +238,12 @@
                     <TextBox x:Name="TxtLoginUser" Style="{StaticResource ModernTextBox}"/>
                     
                     <TextBlock Text="Senha" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,10,0,3"/>
-                    <PasswordBox x:Name="TxtLoginPass" Height="28" Margin="0,0,0,20" VerticalContentAlignment="Center"
-                                 Background="{DynamicResource InputBackgroundBrush}" Foreground="{DynamicResource TextBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/>
+                    <PasswordBox x:Name="TxtLoginPass" Height="28" Margin="0,0,0,20" VerticalContentAlignment="Center" Background="{DynamicResource InputBackgroundBrush}" Foreground="{DynamicResource TextBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/>
                     
                     <Button Content="ENTRAR" Style="{StaticResource HoverButtonStyle}" Click="BtnLogin_Click" Height="35" FontSize="14"/>
                     
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                         <Button Content="REGISTRAR" Background="Transparent" Foreground="{DynamicResource TitleBrush}" BorderThickness="0" Click="BtnRegister_Click" FontSize="12" Margin="0,0,10,0"/>
-                         <Button Content="Verificar Atualizações" Background="Transparent" BorderThickness="0" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Click="BtnCheckUpdate_Click"/>
+                         <Button Content="REGISTRAR" Background="Transparent" Foreground="{DynamicResource TitleBrush}" BorderThickness="0" Click="BtnRegister_Click" FontSize="12"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -443,8 +387,6 @@
                     <ComboBox x:Name="CbFiltroAno" Width="80" Margin="0,0,5,0" ToolTip="Ano"/>
                     <TextBox x:Name="TxtBusca" Width="200" Style="{StaticResource ModernTextBox}" ToolTip="Busca Geral..." TextChanged="TxtBusca_TextChanged" Margin="5,0,5,0"/>
                     <Button Content="🔍 Filtrar" Style="{StaticResource ToolbarButtonStyle}" Click="BtnRefresh_Click" Margin="0,0,10,0"/>
-                    
-                    <!-- BOTÃO NOVO DE AJUSTAR TABELA -->
                     <Button Content="📏 Ajustar" Style="{StaticResource ToolbarButtonStyle}" Click="BtnAutoFit_Click" Margin="0,0,20,0" ToolTip="Organizar Largura das Colunas"/>
 
                     <Button Content="✅ Marcar Como Pago" Background="{DynamicResource ActionPayBg}" Foreground="{DynamicResource ActionPayFg}" BorderThickness="0" Click="BtnMarkPaid_Click" Margin="0,0,5,0" Padding="10,5"/>
@@ -454,6 +396,7 @@
             </Border>
 
             <DataGrid Grid.Row="3" x:Name="GridVendas" Margin="10" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single"
+                      VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
                       Background="{DynamicResource CardBackgroundBrush}"
                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                       RowHeight="25"
@@ -480,14 +423,12 @@
                 </DataGrid.Resources>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                    <!-- Ajustado para Auto para não ficar enorme vazio -->
                     <DataGridTextColumn Header="Cliente" Binding="{Binding Cliente}" Width="250"/>
                     <DataGridTextColumn Header="Contato" Binding="{Binding Contato}" Width="110"/>
                     <DataGridTextColumn Header="Data" Binding="{Binding DataFormatada}" Width="90"/>
                     <DataGridTextColumn Header="Gastos" Binding="{Binding GastosFormatado}" Width="90"/>
                     <DataGridTextColumn Header="Venda" Binding="{Binding VendaFormatada}" Width="90"/>
                     <DataGridTextColumn Header="Lucro" Binding="{Binding LucrosFormatado}" Width="90"/>
-                    <!-- Aumentado tamanho padrão -->
                     <DataGridTextColumn Header="Serviço" Binding="{Binding TipoServico}" Width="150"/>
                     
                     <DataGridTemplateColumn Header="Status" Width="90" SortMemberPath="Pago">

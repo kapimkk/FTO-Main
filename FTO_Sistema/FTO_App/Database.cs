@@ -27,23 +27,16 @@ namespace FTO_App
 
     public class Database
     {
-        // Usa o diretório base da aplicação para garantir que o banco seja criado no lugar certo
         private static string DB_NAME = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FTO.db");
-        
-        // Adicionado Pooling=True para performance e evitar locks
-        private static string ConnectionString => $"Data Source={DB_NAME};Version=3;Pooling=True;Cache Size=2000;Page Size=4096;";
+        private static string ConnectionString => $"Data Source={DB_NAME};Version=3;Pooling=True;Cache Size=5000;Page Size=4096;Journal Mode=WAL;";
 
         public static void InitTables()
         {
-            // O SQLite cria o arquivo automaticamente no Open() se não existir.
-            // Não usamos CreateFile manualmente para evitar corrupção de 0 bytes.
-
             using (var conn = GetConnection())
             {
-                // Ativa modo WAL para performance e estabilidade
                 using (var cmdPragma = new SQLiteCommand(conn))
                 {
-                    cmdPragma.CommandText = "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;";
+                    cmdPragma.CommandText = "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA temp_store=MEMORY;";
                     cmdPragma.ExecuteNonQuery();
                 }
 
