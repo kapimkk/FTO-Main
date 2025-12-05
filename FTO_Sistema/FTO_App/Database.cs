@@ -28,7 +28,7 @@ namespace FTO_App
     public class Database
     {
         private static string DB_NAME = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FTO.db");
-        private static string ConnectionString => $"Data Source={DB_NAME};Version=3;Pooling=True;Cache Size=5000;Page Size=4096;Journal Mode=WAL;";
+        private static string ConnectionString => $"Data Source={DB_NAME};Version=3;Pooling=False;Cache Size=5000;Page Size=4096;Journal Mode=WAL;";
 
         public static void InitTables()
         {

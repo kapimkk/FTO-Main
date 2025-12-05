@@ -223,7 +223,11 @@ namespace FTO_App
                 ShowMsg("Usuário criado!");
                 BtnVoltarLogin_Click(null, null);
             }
-            catch { ShowError("Usuário já existe."); }
+            catch (Exception ex)
+{
+    // Isso vai mostrar uma janela com o erro REAL (ex: 'table Users not found', 'database is locked', etc)
+    MessageBox.Show($"ERRO REAL: {ex.Message}\n\nDetalhes: {ex.StackTrace}");
+}
         }
 
         private void BtnIrParaRegistro_Click(object sender, RoutedEventArgs e)
