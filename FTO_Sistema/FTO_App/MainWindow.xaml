@@ -309,7 +309,7 @@
     </Border>
 </Grid>
 
-        <Grid x:Name="SelectionGrid" Background="#262626" Visibility="Collapsed" Panel.ZIndex="90">
+        <Grid x:Name="SelectionGrid" Background="{StaticResource LoginPrimary}" Visibility="Collapsed" Panel.ZIndex="90">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock x:Name="LblWelcome" Text="Bem-vindo!" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TitleBrush}" HorizontalAlignment="Center" Margin="0,0,0,40"/>
                 <Button Width="240" Height="170" Click="BtnGoToSales_Click" Style="{StaticResource HoverButtonStyle}">
