@@ -16,6 +16,10 @@ namespace FTO_App
     {
         private const string localVersion = "1.0";
         private long? _editingId = null;
+        
+        // Nova variável para controlar a edição de clientes
+        private long? _editingClientId = null;
+
         private string _loggedUser = string.Empty;
         private int _currentPage = 1;
         private int _totalPages = 1;
@@ -224,10 +228,9 @@ namespace FTO_App
                 BtnVoltarLogin_Click(null, null);
             }
             catch (Exception ex)
-{
-    // Isso vai mostrar uma janela com o erro REAL (ex: 'table Users not found', 'database is locked', etc)
-    MessageBox.Show($"ERRO REAL: {ex.Message}\n\nDetalhes: {ex.StackTrace}");
-}
+            {
+                MessageBox.Show($"ERRO REAL: {ex.Message}\n\nDetalhes: {ex.StackTrace}");
+            }
         }
 
         private void BtnIrParaRegistro_Click(object sender, RoutedEventArgs e)
@@ -664,6 +667,8 @@ namespace FTO_App
 
         private void BtnCloseClients_Click(object sender, RoutedEventArgs e)
         {
+            // Alterado: Limpa o formulário ao fechar para evitar inconsistências
+            ClearClientForm();
             ClientsGrid.Visibility = Visibility.Collapsed;
             LoadClients();
         }
@@ -692,21 +697,66 @@ namespace FTO_App
             catch (Exception ex) { ShowError(ex.Message); }
         }
 
+        // Método Substituído: Agora lida com Inserção e Atualização
         private void BtnAddClientInternal_Click(object sender, RoutedEventArgs e)
         {
             if(string.IsNullOrWhiteSpace(TxtNewCliNome.Text)) return;
+
             try
             {
-                Database.ExecuteNonQuery("INSERT INTO Clientes (Nome, Contato, Cpf_Cnpj) VALUES (@n, @c, @d)",
-                    new Dictionary<string, object> {
-                        {"@n", TxtNewCliNome.Text},
-                        {"@c", GetDbValue(TxtNewCliContato.Text)},
-                        {"@d", GetDbValue(TxtNewCliDoc.Text)}
-                    });
-                TxtNewCliNome.Text = ""; TxtNewCliContato.Text = ""; TxtNewCliDoc.Text = "";
+                if (_editingClientId.HasValue)
+                {
+                    // Update
+                     Database.ExecuteNonQuery("UPDATE Clientes SET Nome=@n, Contato=@c, Cpf_Cnpj=@d WHERE Id=@id",
+                        new Dictionary<string, object> {
+                            {"@n", TxtNewCliNome.Text},
+                            {"@c", GetDbValue(TxtNewCliContato.Text)},
+                            {"@d", GetDbValue(TxtNewCliDoc.Text)},
+                            {"@id", _editingClientId.Value}
+                        });
+                    ShowMsg("Cliente atualizado com sucesso!");
+                }
+                else
+                {
+                    // Insert
+                    Database.ExecuteNonQuery("INSERT INTO Clientes (Nome, Contato, Cpf_Cnpj) VALUES (@n, @c, @d)",
+                        new Dictionary<string, object> {
+                            {"@n", TxtNewCliNome.Text},
+                            {"@c", GetDbValue(TxtNewCliContato.Text)},
+                            {"@d", GetDbValue(TxtNewCliDoc.Text)}
+                        });
+                    ShowMsg("Cliente cadastrado!");
+                }
+
+                ClearClientForm(); // Limpa form e reseta botão
                 LoadClientsGrid();
             }
-            catch (Exception ex) { ShowError($"Erro ao adicionar: {ex.Message}"); }
+            catch (Exception ex) { ShowError($"Erro ao salvar: {ex.Message}"); }
+        }
+
+        // Novo Método: Botão Editar da Grid de Clientes
+        private void BtnEditClientInternal_Click(object sender, RoutedEventArgs e)
+        {
+            if (GridClientes.SelectedItem is ClienteModel c)
+            {
+                _editingClientId = c.Id;
+                TxtNewCliNome.Text = c.Nome;
+                TxtNewCliContato.Text = c.Contato;
+                TxtNewCliDoc.Text = c.CpfCnpj;
+
+                // Muda o botão de "Adicionar" para "Salvar Alteração"
+                // Requer que o botão tenha x:Name="BtnSaveClient" no XAML
+                if (BtnSaveClient != null)
+                {
+                    BtnSaveClient.Content = "💾 Salvar Alteração";
+                    BtnSaveClient.Background = (SolidColorBrush)new BrushConverter().ConvertFrom("#FFD700");
+                    BtnSaveClient.Foreground = (SolidColorBrush)new BrushConverter().ConvertFrom("#0b3d91");
+                }
+            }
+            else
+            {
+                ShowMsg("Selecione um cliente na lista para editar.");
+            }
         }
 
         private void BtnDeleteClientInternal_Click(object sender, RoutedEventArgs e)
@@ -718,9 +768,27 @@ namespace FTO_App
                     {
                         Database.ExecuteNonQuery("DELETE FROM Clientes WHERE Id=@id", new Dictionary<string, object>{{"@id", c.Id}});
                         LoadClientsGrid();
+                        // Se excluiu o que estava editando, limpa
+                        if (_editingClientId == c.Id) ClearClientForm();
                     }
                     catch (Exception ex) { ShowError(ex.Message); }
                 }
+            }
+        }
+
+        // Novo Método: Reseta o formulário de clientes
+        private void ClearClientForm()
+        {
+            _editingClientId = null;
+            TxtNewCliNome.Text = ""; 
+            TxtNewCliContato.Text = ""; 
+            TxtNewCliDoc.Text = "";
+
+            if (BtnSaveClient != null)
+            {
+                BtnSaveClient.Content = "+ Adicionar";
+                BtnSaveClient.ClearValue(Button.BackgroundProperty);
+                BtnSaveClient.ClearValue(Button.ForegroundProperty);
             }
         }
         

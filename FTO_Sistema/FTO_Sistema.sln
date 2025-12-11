@@ -5,7 +5,6 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FTO_App", "FTO_App\FTO_App.csproj", "{5459603B-EC15-4564-81C7-8B3DCE8A13E1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FTO_Updater", "FTO_Updater\FTO_Updater.csproj", "{FA73E668-267C-436E-8A36-45198EF07027}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

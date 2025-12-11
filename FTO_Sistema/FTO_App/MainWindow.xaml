@@ -536,7 +536,7 @@
                             <TextBlock Text="Documento" FontWeight="SemiBold" Margin="0,0,0,3" Foreground="{DynamicResource TextBrush}"/>
                             <TextBox x:Name="TxtNewCliDoc" Width="150" Style="{StaticResource ModernTextBox}" Tag="Doc"/>
                         </StackPanel>
-                        <Button Content="+ Adicionar" Style="{StaticResource HoverButtonStyle}" VerticalAlignment="Bottom" Height="30" Click="BtnAddClientInternal_Click"/>
+                        <Button x:Name="BtnSaveClient" Content="+ Adicionar" Style="{StaticResource HoverButtonStyle}" VerticalAlignment="Bottom" Height="30" Click="BtnAddClientInternal_Click"/>
                     </StackPanel>
 
                     <DataGrid Grid.Row="2" x:Name="GridClientes" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
@@ -570,6 +570,8 @@
                     </DataGrid>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                        <Button Content="✏️ Editar" Background="{DynamicResource ActionEditBg}" Foreground="{DynamicResource ActionEditFg}" BorderThickness="0" Padding="10,5" Click="BtnEditClientInternal_Click" Margin="0,0,10,0"/>
+
                         <Button Content="Excluir" Background="{DynamicResource ActionDelBg}" Foreground="{DynamicResource ActionDelFg}" BorderThickness="0" Padding="10,5" Click="BtnDeleteClientInternal_Click" Margin="0,0,10,0"/>
                         <Button Content="Fechar" Background="{DynamicResource WindowBackgroundBrush}" Foreground="{DynamicResource TextBrush}" BorderThickness="0" Padding="10,5" Click="BtnCloseClients_Click"/>
                     </StackPanel>
