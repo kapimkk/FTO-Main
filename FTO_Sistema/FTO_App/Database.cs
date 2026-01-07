@@ -32,6 +32,7 @@ namespace FTO_App
 
                 using (var cmd = new SQLiteCommand(conn))
                 {
+                    // Alterado 'Data TEXT' para 'Data DATE' conforme solicitado
                     cmd.CommandText = @"
                         CREATE TABLE IF NOT EXISTS Users (
                             Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +49,7 @@ namespace FTO_App
                             Id INTEGER PRIMARY KEY AUTOINCREMENT,
                             Cliente TEXT,
                             Contato TEXT,
-                            Data TEXT,
+                            Data DATE, 
                             Gastos DECIMAL(10,2),
                             Venda DECIMAL(10,2),
                             TipoServico TEXT,
