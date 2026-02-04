@@ -22,7 +22,6 @@ namespace FTO_App.Views
         private int _totalPages = 1;
         private const int ITEMS_PER_PAGE = 30;
         private string _currentFilter = "";
-        private bool _isDarkTheme = false;
 
         public DashboardView()
         {
@@ -48,6 +47,45 @@ namespace FTO_App.Views
             }
         }
 
+        private void BtnBackupClients_Click(object sender, RoutedEventArgs e)
+        {
+            var list = GridClientes.ItemsSource as List<ClienteModel>;
+
+            if (list == null || list.Count == 0)
+            {
+                MessageBox.Show("Não há clientes cadastrados para fazer backup.");
+                return;
+            }
+
+            SaveFileDialog sfd = new SaveFileDialog
+            {
+                Filter = "Excel|*.xlsx",
+                FileName = $"Backup_Clientes_{DateTime.Now:yyyyMMdd}.xlsx"
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                try
+                {
+                    using (var wb = new XLWorkbook())
+                    {
+                        var ws = wb.Worksheets.Add("Clientes");
+
+                        ws.Cell(1, 1).InsertTable(list);
+
+                        ws.Columns().AdjustToContents();
+
+                        wb.SaveAs(sfd.FileName);
+                        MessageBox.Show("Backup de clientes realizado com sucesso!", "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Erro ao gerar o backup: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+
         private void PopulateDateFilters()
         {
             if (CbFiltroMes == null || CbFiltroAno == null) return;
@@ -66,70 +104,6 @@ namespace FTO_App.Views
             CbFiltroAno.SelectionChanged += (s, e) => { _currentPage = 1; LoadData(); };
         }
 
-        // --- THEME TOGGLE (ATUALIZADO) ---
-        private void BtnToggleTheme_Click(object sender, RoutedEventArgs e)
-        {
-            _isDarkTheme = !_isDarkTheme;
-            if (_isDarkTheme)
-            {
-                // MODO ESCURO
-                SetColor("WindowBackgroundBrush", "#1E1E1E");
-                SetColor("CardBackgroundBrush", "#2D2D30");
-                SetColor("TextBrush", "#FFFFFF");
-                SetColor("SecondaryTextBrush", "#BBBBBB");
-                SetColor("TitleBrush", "#FFFFFF");
-                SetColor("BorderBrush", "#444444");
-
-                // Inputs Escuros
-                SetColor("InputBackgroundBrush", "#3E3E42");
-                SetColor("InputTextBrush", "#FFFFFF");
-
-                SetColor("ProfitBackgroundBrush", "#1B5E20");
-                SetColor("GridHeaderBrush", "#252526");
-                SetColor("GridHeaderForeground", "#DDDDDD");
-                SetColor("RowBackgroundBrush", "#2D2D30");
-                SetColor("GridAltRowBrush", "#333337");
-                SetColor("GridLinesBrush", "#404040");
-                SetColor("PositiveBrush", "#81C784");
-                SetColor("NegativeBrush", "#E57373");
-                SetColor("ActionPayBg", "#1B5E20"); SetColor("ActionPayFg", "#A5D6A7");
-                SetColor("ActionEditBg", "#0D47A1"); SetColor("ActionEditFg", "#90CAF9");
-                SetColor("ActionDelBg", "#B71C1C"); SetColor("ActionDelFg", "#EF9A9A");
-                BtnTheme.Content = "☀️ Claro";
-            }
-            else
-            {
-                // MODO CLARO
-                SetColor("WindowBackgroundBrush", "#F5F5F7");
-                SetColor("CardBackgroundBrush", "#FFFFFF");
-                SetColor("TextBrush", "#000000");
-                SetColor("SecondaryTextBrush", "#555555");
-                SetColor("TitleBrush", "#0b3d91");
-                SetColor("BorderBrush", "#CCCCCC");
-
-                // Inputs Claros
-                SetColor("InputBackgroundBrush", "#FFFFFF");
-                SetColor("InputTextBrush", "#000000");
-
-                SetColor("ProfitBackgroundBrush", "#F1F8E9");
-                SetColor("GridHeaderBrush", "#E0E0E0");
-                SetColor("GridHeaderForeground", "#000000");
-                SetColor("RowBackgroundBrush", "#FFFFFF");
-                SetColor("GridAltRowBrush", "#FAFAFA");
-                SetColor("GridLinesBrush", "#D0D0D0");
-                SetColor("PositiveBrush", "#2E7D32");
-                SetColor("NegativeBrush", "#C62828");
-                SetColor("ActionPayBg", "#E8F5E9"); SetColor("ActionPayFg", "#2E7D32");
-                SetColor("ActionEditBg", "#E3F2FD"); SetColor("ActionEditFg", "#1565C0");
-                SetColor("ActionDelBg", "#FFEBEE"); SetColor("ActionDelFg", "#C62828");
-                BtnTheme.Content = "🌙 Tema";
-            }
-        }
-
-        private void SetColor(string key, string hex)
-        {
-            Application.Current.Resources[key] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
-        }
 
         private object GetDbValue(string? text) => string.IsNullOrWhiteSpace(text) ? DBNull.Value : text.Trim();
 

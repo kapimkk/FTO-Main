@@ -24,9 +24,6 @@
                         <TextBlock Text="Painel de Controle" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button x:Name="BtnTheme" Content="🌙 Tema" Background="Transparent" Foreground="White" BorderThickness="1" BorderBrush="White" Margin="0,0,10,0" Click="BtnToggleTheme_Click" Padding="10,4">
-                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
-                        </Button>
                         <Button Content="⚠️ Reiniciar" Background="#FF6F00" Foreground="White" FontSize="11" Padding="8,4" Margin="0,0,10,0" BorderThickness="0" Click="BtnRestart_Click"/>
                         <Button Content="Voltar" Background="Transparent" Foreground="White" BorderBrush="White" BorderThickness="1" Padding="10,2" Click="BtnBackToSelect_Click"/>
                     </StackPanel>
@@ -212,6 +209,7 @@
                             <TextBox x:Name="TxtNewCliDoc" Width="150" Style="{StaticResource ModernTextBox}" Tag="Doc"/>
                         </StackPanel>
                         <Button x:Name="BtnSaveClient" Content="+ Adicionar" Style="{StaticResource HoverButtonStyle}" VerticalAlignment="Bottom" Height="30" Click="BtnAddClientInternal_Click"/>
+                        <Button Content="💾 Backup" Style="{StaticResource HoverButtonStyle}" VerticalAlignment="Bottom" Height="30" Margin="10,0,0,0" Click="BtnBackupClients_Click"/>
                     </StackPanel>
 
                     <DataGrid Grid.Row="2" x:Name="GridClientes" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"

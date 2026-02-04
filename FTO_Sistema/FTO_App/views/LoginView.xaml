@@ -10,7 +10,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="80,0,0,0">
-                <TextBlock Text="FTO" FontSize="90" FontWeight="Black" Foreground="White" Opacity="0.05" Margin="-5,0,0,-40"/>
+                <TextBlock Text="FTO" FontSize="90" FontWeight="Black" Foreground="White" Margin="-5,0,0,-40"/>
                 <TextBlock Text="SISTEMAS" FontSize="45" FontWeight="Bold" Foreground="{StaticResource LoginAccent}"/>
                 <TextBlock Text="Painel de Acesso Corporativo" Foreground="{StaticResource LoginMuted}" FontSize="20" Margin="2,10,0,0"/>
                 <Border Height="4" Width="80" Background="{StaticResource LoginAccent}" HorizontalAlignment="Left" Margin="2,25,0,0" CornerRadius="2"/>
