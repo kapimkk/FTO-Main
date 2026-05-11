@@ -333,6 +333,8 @@ namespace FTO_App.Views
             CbCliente.Text = ""; TxtContato.Text = ""; TxtCpf.Text = "";
             TxtServico.Text = ""; TxtGastos.Text = ""; TxtVenda.Text = ""; TxtLucro.Text = "";
             DpData.SelectedDate = DateTime.Today;
+            CbFormaPag.SelectedIndex = -1;
+            CbStatus.SelectedIndex = 1;
         }
 
         private void Calc_Lucro(object sender, TextChangedEventArgs e)

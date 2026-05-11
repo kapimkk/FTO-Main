@@ -164,6 +164,7 @@
                     <DataGridTextColumn Header="Venda" Binding="{Binding VendaFormatada}" Width="90"/>
                     <DataGridTextColumn Header="Lucro" Binding="{Binding LucrosFormatado}" Width="90"/>
                     <DataGridTextColumn Header="Serviço" Binding="{Binding TipoServico}" Width="150"/>
+                    <DataGridTextColumn Header="Forma Pag." Binding="{Binding FormaPag}" Width="100"/>
                     <DataGridTemplateColumn Header="Status" Width="90" SortMemberPath="Pago">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
