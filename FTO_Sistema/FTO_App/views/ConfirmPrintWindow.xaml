@@ -1,0 +1,55 @@
+<Window x:Class="FTO_App.Views.ConfirmPrintWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Confirmar impressão do cupom"
+        Height="640" Width="500"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock Text="Pré-visualização do cupom" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource TitleBrush}"/>
+            <TextBlock Text="Confira os dados antes de enviar para a impressora térmica." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="White" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="20,16">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBlock x:Name="TxtPreview"
+                          FontFamily="Consolas, Courier New"
+                          FontSize="13.5"
+                          Foreground="#111"
+                          TextWrapping="Wrap"
+                          LineHeight="20"/>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="2" Margin="0,14,0,0">
+            <TextBlock Text="Nome do operador (opcional)" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtOperador" Style="{StaticResource ModernTextBox}" Height="32"/>
+
+            <CheckBox x:Name="ChkAssinatura"
+                      Content="Incluir linha para assinatura do operador"
+                      Margin="0,12,0,0"
+                      IsChecked="True"
+                      Foreground="{DynamicResource TextBrush}"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Content="Cancelar" Width="110" Height="36" Margin="0,0,10,0"
+                    Background="{DynamicResource CardBackgroundBrush}"
+                    Foreground="{DynamicResource TextBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    Click="BtnCancel_Click"/>
+            <Button Content="🖨️ Confirmar e imprimir" Width="200" Height="36"
+                    Style="{StaticResource HoverButtonStyle}"
+                    Click="BtnConfirmPrint_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

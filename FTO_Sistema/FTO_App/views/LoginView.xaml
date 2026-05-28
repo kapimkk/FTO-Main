@@ -69,8 +69,29 @@
         </Grid>
 
         <Grid x:Name="SelectionGrid" Background="{StaticResource LoginPrimary}" Visibility="Collapsed" Panel.ZIndex="90">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock x:Name="LblWelcome" Text="Bem-vindo!" FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TitleBrush}" HorizontalAlignment="Center" Margin="0,0,0,40"/>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+                <TextBlock x:Name="LblWelcome" Text="Bem-vindo!" FontSize="26" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" Margin="0,0,0,24"/>
+
+                <Border Background="#1e293b" CornerRadius="12" Padding="22" Margin="0,0,0,28" BorderBrush="#334155" BorderThickness="1">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="16" ShadowDepth="2" Opacity="0.35" Color="Black"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <TextBlock Text="Dispositivos" FontSize="16" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
+                        <TextBlock Text="Selecione a impressora térmica e o scanner para uso no sistema." Foreground="{StaticResource LoginMuted}" FontSize="12" Margin="0,0,0,16"/>
+
+                        <TextBlock Text="🖨️ Impressora térmica" FontWeight="SemiBold" Foreground="#e2e8f0" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="CbImpressora" Style="{StaticResource ModuleDeviceComboStyle}" SelectionChanged="CbImpressora_SelectionChanged" Margin="0,0,0,14"/>
+
+                        <TextBlock Text="📷 Scanner" FontWeight="SemiBold" Foreground="#e2e8f0" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="CbScanner" Style="{StaticResource ModuleDeviceComboStyle}" SelectionChanged="CbScanner_SelectionChanged" Margin="0,0,0,12"/>
+
+                        <Button Content="↻ Atualizar lista de dispositivos" Click="BtnRefreshDevices_Click"
+                                Background="Transparent" Foreground="{StaticResource LoginAccent}" BorderThickness="0"
+                                HorizontalAlignment="Left" Cursor="Hand" FontSize="12"/>
+                    </StackPanel>
+                </Border>
+
                 <Button Width="240" Height="170" Click="BtnGoToSales_Click" Style="{StaticResource HoverButtonStyle}">
                     <StackPanel>
                         <TextBlock Text="🛒" FontSize="60" HorizontalAlignment="Center" Foreground="White" Margin="0,0,0,10"/>

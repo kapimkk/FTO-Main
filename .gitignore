@@ -1,6 +1,7 @@
 # Diretórios de build e temporários
 bin/
 obj/
+publish/
 .vs/
 *.user
 *.suo

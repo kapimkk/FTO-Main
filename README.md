@@ -26,6 +26,18 @@ Dashboard financeiro com totais de Ganhos, Gastos e Lucro Líquido.
 
 Exportação de relatórios para Excel (.xlsx).
 
+# Impressão térmica (cupom não fiscal):
+
+Seleção de impressora e scanner na tela de módulos (após login).
+
+Suporte a impressoras ESC/POS, incluindo **MP-2500 HT**.
+
+Cupom com logo, dados da empresa, venda (sem status, gastos e lucro), assinatura opcional e mensagem de agradecimento.
+
+Botão **Imprimir** no painel de vendas (habilitado ao selecionar uma linha na tabela).
+
+Janela de confirmação com pré-visualização antes de enviar à impressora.
+
 # Sistema Inteligente:
 
 Banco de dados local (SQLite) otimizado para alto desempenho.
@@ -44,13 +56,41 @@ Exportação: ClosedXML (Excel)
 
 Design: XAML customizado
 
-# 📦 Requisitos de Sistema
+# 📦 Gerar executável (build para distribuição)
 
-Para executar o sistema, o computador do cliente necessita:
+Na pasta do projeto, execute no PowerShell (recomendado — pasta completa, mais estável com SQLite e impressão):
+
+```powershell
+dotnet publish "FTO_Sistema\FTO_App\FTO_App.csproj" -c Release -r win-x64 --self-contained true -p:SatelliteResourceLanguages=pt-BR -p:PublishReadyToRun=false -p:DebugType=none -p:DebugSymbols=false -p:IncludeNativeLibrariesForSelfExtract=true -o "FTO_Sistema\publish\FTO_App-win-x64"
+```
+
+Alternativa com perfil de publicação (mesmas opções):
+
+```powershell
+dotnet publish "FTO_Sistema\FTO_App\FTO_App.csproj" -p:PublishProfile=Win64-SelfContained
+```
+
+`SatelliteResourceLanguages=pt-BR` evita copiar dezenas de pastas de idiomas (`cs`, `de`, `en`, etc.). O pacote ainda inclui o runtime .NET (~150–170 MB) porque é self-contained.
+
+**Entrega ao cliente:** compacte a pasta `FTO_Sistema\publish\FTO_App-win-x64` inteira em um `.zip`. O usuário deve extrair e executar `FTO_App.exe` (não copiar só o `.exe` — as DLLs e `SQLite.Interop.dll` precisam estar na mesma pasta).
+
+| Item validado no publish | Status |
+|--------------------------|--------|
+| `FTO_App.exe` | Incluído |
+| Runtime .NET 8 (self-contained) | Incluído (~200 MB) |
+| `SQLite.Interop.dll` | Incluído |
+| `icons/fto.png` (cupom térmico) | Incluído |
+| Inicialização do app | Testada |
+
+**Não use** `PublishSingleFile` neste projeto: WPF + SQLite nativo costuma falhar ao extrair bibliotecas de um único arquivo.
+
+# 📦 Requisitos de Sistema (build self-contained)
+
+Com o publish acima, o cliente **não precisa** instalar .NET separadamente.
 
 Windows 10 ou 11 (64-bits).
 
-.NET Desktop Runtime 6.0 ou superior.
+Para build *framework-dependent* (menor, exige .NET 8 Desktop Runtime instalado), omita `--self-contained true`.
 
 # 📥 Como Instalar
 

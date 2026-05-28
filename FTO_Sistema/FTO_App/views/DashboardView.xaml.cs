@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using FTO_App.Models;
+using FTO_App.Services;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -314,6 +315,39 @@ namespace FTO_App.Views
                 Database.ExecuteNonQuery("DELETE FROM Vendas WHERE Id=@id", new Dictionary<string, object> { { "@id", v.Id } });
                 LoadData();
             }
+        }
+
+        private void GridVendas_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            BtnImprimir.IsEnabled = GridVendas.SelectedItem is Venda;
+        }
+
+        private void BtnImprimir_Click(object sender, RoutedEventArgs e)
+        {
+            if (GridVendas.SelectedItem is not Venda venda)
+            {
+                MessageBox.Show("Selecione uma venda na tabela para imprimir o cupom.", "Impressão",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            if (!ThermalPrinterService.IsPrinterConfigured)
+            {
+                MessageBox.Show(
+                    "Nenhuma impressora configurada.\n\nVolte à tela de módulos (após o login) e selecione a impressora MP-2500 HT.",
+                    "Impressora",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            var owner = Window.GetWindow(this);
+            var dialog = new ConfirmPrintWindow(venda)
+            {
+                Owner = owner
+            };
+
+            dialog.ShowDialog();
         }
 
         private void BtnMarkPaid_Click(object sender, RoutedEventArgs e)

@@ -125,11 +125,13 @@
 
                     <Button Content="✅ Marcar Como Pago" Background="{DynamicResource ActionPayBg}" Foreground="{DynamicResource ActionPayFg}" BorderThickness="0" Click="BtnMarkPaid_Click" Margin="0,0,5,0" Padding="10,5"/>
                     <Button Content="✏️ Editar" Background="{DynamicResource ActionEditBg}" Foreground="{DynamicResource ActionEditFg}" BorderThickness="0" Click="BtnEditRow_Click" Margin="0,0,5,0" Padding="10,5"/>
+                    <Button x:Name="BtnImprimir" Content="🖨️ Imprimir" Background="#E8EAF6" Foreground="#283593" BorderThickness="0"
+                            Click="BtnImprimir_Click" Margin="0,0,5,0" Padding="10,5" IsEnabled="False" ToolTip="Selecione uma venda na tabela"/>
                     <Button Content="🗑️ Excluir" Background="{DynamicResource ActionDelBg}" Foreground="{DynamicResource ActionDelFg}" BorderThickness="0" Click="BtnDeleteRow_Click" Padding="10,5"/>
                 </StackPanel>
             </Border>
 
-            <DataGrid Grid.Row="3" x:Name="GridVendas" Margin="10" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single"
+            <DataGrid Grid.Row="3" x:Name="GridVendas" Margin="10" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" SelectionMode="Single" SelectionChanged="GridVendas_SelectionChanged"
                       VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"
                       Background="{DynamicResource CardBackgroundBrush}"
                       BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
