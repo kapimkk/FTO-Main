@@ -13,18 +13,8 @@ namespace FTO_App.Views
         {
             InitializeComponent();
             _venda = venda ?? throw new ArgumentNullException(nameof(venda));
-            AtualizarPreview();
-            ChkAssinatura.Checked += (_, _) => AtualizarPreview();
-            ChkAssinatura.Unchecked += (_, _) => AtualizarPreview();
-            TxtOperador.TextChanged += (_, _) => AtualizarPreview();
-        }
-
-        private void AtualizarPreview()
-        {
-            TxtPreview.Text = ReceiptLayout.GetPreviewText(
-                _venda,
-                TxtOperador.Text,
-                ChkAssinatura.IsChecked == true);
+            CupomView.Inicializar(_venda);
+            CupomView.PrepararParaImpressao(ReceiptCupomView.LarguraCupomPx);
         }
 
         private void BtnCancel_Click(object sender, RoutedEventArgs e)
@@ -37,7 +27,8 @@ namespace FTO_App.Views
         {
             try
             {
-                if (!ThermalPrinterService.IsPrinterConfigured)
+                string? impressora = DeviceSettingsStore.Current.SelectedPrinter;
+                if (string.IsNullOrWhiteSpace(impressora))
                 {
                     MessageBox.Show(
                         "Selecione uma impressora na tela de módulos (após o login).\n" +
@@ -48,10 +39,19 @@ namespace FTO_App.Views
                     return;
                 }
 
-                ThermalPrinterService.PrintReceipt(
-                    _venda,
-                    TxtOperador.Text,
-                    ChkAssinatura.IsChecked == true);
+                if (!CupomPrintHelper.ImprimirNaImpressoraConfigurada(
+                        CupomView.CupomParaImpressao,
+                        $"Cupom FTO {_venda.Id}",
+                        impressora,
+                        out string? erro))
+                {
+                    MessageBox.Show(
+                        erro ?? "Não foi possível imprimir o cupom.",
+                        "Erro na impressão",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    return;
+                }
 
                 MessageBox.Show(
                     "Cupom enviado para a impressora com sucesso!",
@@ -65,8 +65,7 @@ namespace FTO_App.Views
             catch (Exception ex)
             {
                 MessageBox.Show(
-                    $"Não foi possível imprimir.\n\n{ex.Message}\n\n" +
-                    "Verifique se a impressora MP-2500 HT está ligada, conectada e definida como padrão ou selecionada nos módulos.",
+                    $"Não foi possível imprimir.\n\n{ex.Message}",
                     "Erro na impressão",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);

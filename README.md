@@ -30,13 +30,13 @@ Exportação de relatórios para Excel (.xlsx).
 
 Seleção de impressora e scanner na tela de módulos (após login).
 
-Suporte a impressoras ESC/POS, incluindo **MP-2500 HT**.
+Impressão via layout WPF (`PrintVisual`), mesmo padrão do projeto Imperial Colors — recomendado para **MP-2500 HT** e outras impressoras instaladas no Windows.
 
-Cupom com logo, dados da empresa, venda (sem status, gastos e lucro), assinatura opcional e mensagem de agradecimento.
+Cupom com logo, dados da empresa (FTO Informática), número da venda, data, serviço, total, forma de pagamento e mensagem de agradecimento (sem dados pessoais do cliente, gastos, lucro ou status).
 
 Botão **Imprimir** no painel de vendas (habilitado ao selecionar uma linha na tabela).
 
-Janela de confirmação com pré-visualização antes de enviar à impressora.
+Janela de confirmação com pré-visualização do cupom antes de enviar à impressora.
 
 # Sistema Inteligente:
 
