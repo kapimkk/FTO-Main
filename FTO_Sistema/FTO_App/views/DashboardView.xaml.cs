@@ -7,9 +7,11 @@ using System.Collections.Generic;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace FTO_App.Views
 {
@@ -23,10 +25,14 @@ namespace FTO_App.Views
         private int _totalPages = 1;
         private const int ITEMS_PER_PAGE = 30;
         private string _currentFilter = "";
+        private bool _suppressClienteAutoFill = false;
+        private readonly List<string> _todosClientesNomes = new();
+        private readonly HashSet<string> _clientesPorNome = new(StringComparer.OrdinalIgnoreCase);
 
         public DashboardView()
         {
             InitializeComponent();
+            CbCliente.AddHandler(TextBox.TextChangedEvent, new TextChangedEventHandler(CbCliente_TextChanged), true);
             if (DpData != null) DpData.SelectedDate = DateTime.Today;
             PopulateDateFilters();
             LoadClients();
@@ -299,12 +305,24 @@ namespace FTO_App.Views
             if (GridVendas.SelectedItem is Venda v)
             {
                 _editingId = v.Id;
-                CbCliente.Text = v.Cliente; TxtContato.Text = v.Contato;
-                DpData.SelectedDate = v.Data; TxtCpf.Text = v.CPF_CNPJ;
-                TxtServico.Text = v.TipoServico; CbFormaPag.Text = v.FormaPag;
-                CbStatus.Text = v.Pago;
-                TxtGastos.Text = v.Gastos.ToString("N2"); TxtVenda.Text = v.VendaValor.ToString("N2");
-                BtnSalvar.Content = "ATUALIZAR VENDA";
+                _suppressClienteAutoFill = true;
+                try
+                {
+                    CbCliente.Text = v.Cliente;
+                    TxtContato.Text = v.Contato;
+                    DpData.SelectedDate = v.Data;
+                    TxtCpf.Text = v.CPF_CNPJ;
+                    TxtServico.Text = v.TipoServico;
+                    CbFormaPag.Text = v.FormaPag;
+                    CbStatus.Text = v.Pago;
+                    TxtGastos.Text = v.Gastos.ToString("N2");
+                    TxtVenda.Text = v.VendaValor.ToString("N2");
+                    BtnSalvar.Content = "ATUALIZAR VENDA";
+                }
+                finally
+                {
+                    _suppressClienteAutoFill = false;
+                }
             }
         }
 
@@ -319,7 +337,31 @@ namespace FTO_App.Views
 
         private void GridVendas_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            BtnImprimir.IsEnabled = GridVendas.SelectedItem is Venda;
+            bool vendaSelecionada = GridVendas.SelectedItem is Venda;
+            BtnImprimir.IsEnabled = vendaSelecionada;
+            BtnWhatsapp.IsEnabled = vendaSelecionada;
+        }
+
+        private void BtnWhatsapp_Click(object sender, RoutedEventArgs e)
+        {
+            if (GridVendas.SelectedItem is not Venda venda)
+            {
+                MessageBox.Show(
+                    "Selecione uma venda na tabela para abrir o WhatsApp.",
+                    "WhatsApp",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            if (!WhatsAppHelper.OpenChat(venda.Contato, out string? erro))
+            {
+                MessageBox.Show(
+                    erro ?? "Não foi possível abrir o WhatsApp.",
+                    "WhatsApp",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private void BtnImprimir_Click(object sender, RoutedEventArgs e)
@@ -364,11 +406,29 @@ namespace FTO_App.Views
         {
             _editingId = null;
             BtnSalvar.Content = "SALVAR VENDA";
-            CbCliente.Text = ""; TxtContato.Text = ""; TxtCpf.Text = "";
-            TxtServico.Text = ""; TxtGastos.Text = ""; TxtVenda.Text = ""; TxtLucro.Text = "";
-            DpData.SelectedDate = DateTime.Today;
-            CbFormaPag.SelectedIndex = -1;
-            CbStatus.SelectedIndex = 1;
+            _suppressClienteAutoFill = true;
+            try
+            {
+                CbCliente.Text = "";
+                CbCliente.SelectedItem = null;
+                CbCliente.Items.Clear();
+                foreach (string nome in _todosClientesNomes)
+                    CbCliente.Items.Add(nome);
+                CbCliente.IsDropDownOpen = false;
+                TxtContato.Text = "";
+                TxtCpf.Text = "";
+                TxtServico.Text = "";
+                TxtGastos.Text = "";
+                TxtVenda.Text = "";
+                TxtLucro.Text = "";
+                DpData.SelectedDate = DateTime.Today;
+                CbFormaPag.SelectedIndex = -1;
+                CbStatus.SelectedIndex = 1;
+            }
+            finally
+            {
+                _suppressClienteAutoFill = false;
+            }
         }
 
         private void Calc_Lucro(object sender, TextChangedEventArgs e)
@@ -380,31 +440,190 @@ namespace FTO_App.Views
 
         private void LoadClients()
         {
-            CbCliente.Items.Clear();
+            _todosClientesNomes.Clear();
+            _clientesPorNome.Clear();
             try
             {
                 using (var conn = Database.GetConnection())
                 using (var cmd = new SQLiteCommand("SELECT Nome FROM Clientes ORDER BY Nome", conn))
                 using (var r = cmd.ExecuteReader())
-                    while (r.Read()) CbCliente.Items.Add(r.GetString(0));
+                {
+                    while (r.Read())
+                    {
+                        string nome = r.GetString(0);
+                        _todosClientesNomes.Add(nome);
+                        _clientesPorNome.Add(nome);
+                    }
+                }
+            }
+            catch { }
+
+            string texto = CbCliente.Text ?? "";
+            string filtro = texto.Trim();
+            if (string.IsNullOrEmpty(filtro))
+            {
+                _suppressClienteAutoFill = true;
+                try
+                {
+                    CbCliente.Items.Clear();
+                    foreach (string nome in _todosClientesNomes)
+                        CbCliente.Items.Add(nome);
+                }
+                finally
+                {
+                    _suppressClienteAutoFill = false;
+                }
+            }
+            else
+            {
+                var textBox = GetCbClienteTextBox();
+                int caret = textBox?.CaretIndex ?? texto.Length;
+                AplicarFiltroClientesDropdown(filtro, texto, caret, abrirDropdown: false);
+            }
+        }
+
+        private TextBox? GetCbClienteTextBox() =>
+            CbCliente.Template?.FindName("PART_EditableTextBox", CbCliente) as TextBox;
+
+        private List<string> ObterClientesFiltrados(string filtro)
+        {
+            if (string.IsNullOrWhiteSpace(filtro))
+                return new List<string>(_todosClientesNomes);
+
+            return _todosClientesNomes
+                .Where(n => n.Contains(filtro.Trim(), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        private void AplicarFiltroClientesDropdown(string filtro, string textoExibido, int caret, bool abrirDropdown)
+        {
+            List<string> filtrados = ObterClientesFiltrados(filtro);
+
+            _suppressClienteAutoFill = true;
+            try
+            {
+                CbCliente.Items.Clear();
+                foreach (string nome in filtrados)
+                    CbCliente.Items.Add(nome);
+
+                CbCliente.SelectedItem = null;
+                CbCliente.Text = textoExibido;
+
+                TextBox? textBox = GetCbClienteTextBox();
+                if (textBox != null)
+                {
+                    int posicaoCaret = Math.Min(caret, textoExibido.Length);
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        textBox.CaretIndex = posicaoCaret;
+                        textBox.SelectionLength = 0;
+                    }), DispatcherPriority.Input);
+                }
+
+                if (abrirDropdown && filtrados.Count > 0)
+                    CbCliente.IsDropDownOpen = true;
+                else if (filtrados.Count == 0)
+                    CbCliente.IsDropDownOpen = false;
+            }
+            finally
+            {
+                _suppressClienteAutoFill = false;
+            }
+        }
+
+        private void LimparSelecaoClienteParcial(string textoDigitado)
+        {
+            if (CbCliente.SelectedItem != null &&
+                !string.Equals(CbCliente.SelectedItem.ToString(), textoDigitado, StringComparison.OrdinalIgnoreCase))
+            {
+                CbCliente.SelectedItem = null;
+            }
+        }
+
+        private bool ClienteNomeExisteExato(string nome) =>
+            !string.IsNullOrWhiteSpace(nome) && _clientesPorNome.Contains(nome.Trim());
+
+        private void PreencherDadosCliente(string nomeCliente)
+        {
+            try
+            {
+                using (var conn = Database.GetConnection())
+                using (var cmd = new SQLiteCommand("SELECT Contato, Cpf_Cnpj FROM Clientes WHERE Nome=@n", conn))
+                {
+                    cmd.Parameters.AddWithValue("@n", nomeCliente);
+                    using (var r = cmd.ExecuteReader())
+                    {
+                        if (r.Read())
+                        {
+                            TxtContato.Text = r["Contato"]?.ToString() ?? "";
+                            TxtCpf.Text = r["Cpf_Cnpj"]?.ToString() ?? "";
+                        }
+                    }
+                }
             }
             catch { }
         }
 
         private void CbCliente_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (CbCliente.SelectedItem == null) return;
-            try
+            if (_suppressClienteAutoFill || CbCliente.SelectedItem is not string nomeSelecionado)
+                return;
+
+            string textoDigitado = CbCliente.Text?.Trim() ?? "";
+            if (!string.Equals(nomeSelecionado, textoDigitado, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            PreencherDadosCliente(nomeSelecionado);
+        }
+
+        private void CbCliente_DropDownOpened(object sender, EventArgs e)
+        {
+            if (_suppressClienteAutoFill)
+                return;
+
+            string texto = CbCliente.Text ?? "";
+            string filtro = texto.Trim();
+            TextBox? textBox = GetCbClienteTextBox();
+            int caret = textBox?.CaretIndex ?? texto.Length;
+            AplicarFiltroClientesDropdown(filtro, texto, caret, abrirDropdown: true);
+        }
+
+        private void CbCliente_DropDownClosed(object sender, EventArgs e)
+        {
+            if (_suppressClienteAutoFill || CbCliente.SelectedItem is not string nomeSelecionado)
+                return;
+
+            PreencherDadosCliente(nomeSelecionado);
+        }
+
+        private void CbCliente_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_suppressClienteAutoFill)
+                return;
+
+            TextBox? textBox = e.OriginalSource as TextBox;
+            string texto = CbCliente.Text ?? "";
+            string filtro = texto.Trim();
+            int caret = textBox?.CaretIndex ?? texto.Length;
+
+            if (string.IsNullOrEmpty(filtro))
             {
-                using (var conn = Database.GetConnection())
-                using (var cmd = new SQLiteCommand("SELECT Contato, Cpf_Cnpj FROM Clientes WHERE Nome=@n", conn))
-                {
-                    cmd.Parameters.AddWithValue("@n", CbCliente.SelectedItem.ToString());
-                    using (var r = cmd.ExecuteReader())
-                        if (r.Read()) { TxtContato.Text = r["Contato"]?.ToString(); TxtCpf.Text = r["Cpf_Cnpj"]?.ToString(); }
-                }
+                TxtContato.Text = "";
+                TxtCpf.Text = "";
+                AplicarFiltroClientesDropdown(filtro, texto, caret, abrirDropdown: false);
+                return;
             }
-            catch { }
+
+            if (ClienteNomeExisteExato(filtro))
+                PreencherDadosCliente(filtro);
+            else
+            {
+                TxtContato.Text = "";
+                TxtCpf.Text = "";
+                LimparSelecaoClienteParcial(texto);
+            }
+
+            AplicarFiltroClientesDropdown(filtro, texto, caret, abrirDropdown: true);
         }
 
         private void BtnQuickAddClient_Click(object sender, RoutedEventArgs e)

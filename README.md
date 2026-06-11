@@ -36,6 +36,8 @@ Cupom com logo, dados da empresa (FTO Informática), número da venda, data, ser
 
 Botão **Imprimir** no painel de vendas (habilitado ao selecionar uma linha na tabela).
 
+Botão **WhatsApp** ao lado de Excluir: abre a conversa no WhatsApp Desktop usando o contato da venda selecionada.
+
 Janela de confirmação com pré-visualização do cupom antes de enviar à impressora.
 
 # Sistema Inteligente:
