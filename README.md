@@ -92,7 +92,7 @@ O botão **Sair** retorna à tela de login.
 - **Configurações:** Empresa, fiscal (logo do emitente), **API Fiscal** (NF-e / NFS-e), IBS/CBS, logo/cupom, banco e dispositivos.
 - **Estoque e Analytics:** Produtos e painel financeiro.
 - **Relatórios:** Excel (.xlsx) e PDF.
-- **Impressão térmica:** Cupom **não fiscal** de vendas (título padrão **Comprovante de Vendas**). Logo do emitente só na **DANFE NF-e** (PDF A4).
+- **Impressão térmica:** Cupom **não fiscal** de vendas (título padrão **Comprovante de Vendas**), tipografia no estilo Imperial Colors (fontes menores: nome 16, dados 10, rótulos 12, total 18). Logo do emitente só na **DANFE NF-e** (PDF A4).
 - **Atualização automática:** Botão na tela de login.
 
 ---
@@ -361,6 +361,7 @@ O JSON de emissão foi construído e conferido **campo a campo contra o código-
 
 ## Novidades recentes
 
+- **Cupom não fiscal — tipografia:** fontes alinhadas ao estilo do cupom Imperial Colors (nome 16, dados da empresa 10, rótulos 12, total 15/18, pagamento 11). Vale para a pré-visualização, a térmica e o PDF.
 - **Impressão térmica em rede (cupom falhado):** com o papel já correto, o cupom ainda saía esgarçado/apagado na fila de rede. Cor, qualidade e resolução são padrões **por fila**: em *Color* o driver converte o cinza do antialiasing/ClearType em retícula e o texto sai pontilhado; em *Draft* imprime com menos pontos e sai apagado. Agora o PrintTicket força **monocromático, qualidade não-rascunho e a maior resolução declarada** — a fila de rede passa a imprimir igual à USB. Também saiu do caminho de impressão o `VisualBrush` (rasterizava o cupom a 96 DPI para reamostrar nos 203 DPI da térmica): a margem física do driver virou *padding* e a redução de segurança virou `LayoutTransform`, mantendo tudo vetorial. O texto do cupom passa a ser impresso em `Ideal`/`Grayscale` (era `Display`/`ClearType`, que é modo de tela) e as linhas separadoras saem pretas cheias em vez de 15% de preto. O **🔎 Diagnóstico da impressora** agora mostra cor/qualidade/resolução da fila e o que o app força.
 - **Impressão térmica em rede (cupom cortado):** o cupom era medido em **80 mm** (largura do *papel*) quando a fila não reportava um tamanho de bobina — mas uma térmica de 80 mm só imprime **~72 mm** por linha, então a borda direita saía cortada. Via USB o driver reporta a área imprimível correta (73,6 mm na MP-2500 TH) e por isso funcionava; numa fila de rede em A4 caía no fallback errado. Agora o app usa a área **imprimível** (nunca a do papel), seleciona a mídia de bobina quando o driver oferece, respeita a margem física do driver e encolhe proporcionalmente como rede de segurança. Em **Configurações → Dispositivos** há um botão **🔎 Diagnóstico da impressora** que mostra papel, área imprimível e tamanhos do driver — use para comparar a fila USB com a de rede.
 - **Ambiente NF-e fixo pela configuração:** o combo de Produção/Homologação no cadastro e na janela de Ações fiscais deixou de ser editável — segue sempre Configurações → Fiscal / NF-e. Nota já Emitida/Cancelada mantém o ambiente real da emissão.

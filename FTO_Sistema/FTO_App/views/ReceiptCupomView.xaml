@@ -16,21 +16,21 @@
         </Style>
 
         <Style x:Key="CupomRotulo" TargetType="TextBlock" BasedOn="{StaticResource CupomTexto}">
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
 
         <Style x:Key="CupomValor" TargetType="TextBlock" BasedOn="{StaticResource CupomTexto}">
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="5,0,0,0"/>
         </Style>
 
         <Style x:Key="CupomLinha" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
         </Style>
 
         <Style x:Key="CupomEmpresaDetalhe" TargetType="TextBlock" BasedOn="{StaticResource CupomTexto}">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="10"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -52,27 +52,27 @@
             TextOptions.TextRenderingMode="ClearType"
             TextOptions.TextFormattingMode="Display">
         <StackPanel HorizontalAlignment="Stretch">
-            <StackPanel HorizontalAlignment="Stretch" Margin="0,0,0,12">
+            <StackPanel HorizontalAlignment="Stretch" Margin="0,0,0,14">
                 <TextBlock x:Name="TxtEmpresaNome"
                            Style="{StaticResource CupomEmpresaTitulo}"
-                           FontSize="18"
+                           FontSize="16"
                            FontWeight="Bold"
                            Foreground="Black"/>
                 <TextBlock x:Name="TxtEmpresaSubtitulo"
                            Style="{StaticResource CupomEmpresaTitulo}"
-                           FontSize="13"
-                           FontWeight="Bold"
+                           FontSize="10"
+                           FontWeight="SemiBold"
                            Foreground="Black"
-                           Margin="0,4,0,0"/>
+                           Margin="0,2,0,0"/>
                 <TextBlock x:Name="TxtEmpresaEndereco"
                            Style="{StaticResource CupomEmpresaDetalhe}"
-                           Margin="0,4,0,0"/>
+                           Margin="0,2,0,0"/>
                 <TextBlock x:Name="TxtEmpresaCidade"
                            Style="{StaticResource CupomEmpresaDetalhe}"
-                           Margin="0,3,0,0"/>
+                           Margin="0,2,0,0"/>
                 <TextBlock x:Name="TxtEmpresaTelefone"
                            Style="{StaticResource CupomEmpresaDetalhe}"
-                           Margin="0,3,0,0"/>
+                           Margin="0,2,0,0"/>
                 <TextBlock x:Name="TxtEmpresaCnpj"
                            Style="{StaticResource CupomEmpresaDetalhe}"
                            Margin="0,3,0,0"/>
@@ -81,7 +81,7 @@
                            Margin="0,3,0,0"/>
                 <TextBlock x:Name="TxtCupomTitulo"
                            Style="{StaticResource CupomEmpresaTitulo}"
-                           FontSize="13"
+                           FontSize="11"
                            FontWeight="Bold"
                            Foreground="Black"
                            Margin="0,6,0,0"/>
@@ -111,7 +111,7 @@
             <StackPanel Margin="0,0,0,12">
                 <TextBlock Text="Itens / descrição:" Style="{StaticResource CupomRotulo}" Margin="0,0,0,4"/>
                 <TextBlock x:Name="TxtServico"
-                           FontSize="14"
+                           FontSize="11"
                            FontWeight="SemiBold"
                            Foreground="Black"
                            TextWrapping="Wrap"/>
@@ -119,16 +119,16 @@
 
             <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,8"/>
 
-            <Border Height="2" Background="{DynamicResource PrimaryColor}" Margin="0,4,0,10"/>
+            <Border Height="2" Background="{DynamicResource PrimaryColor}" Margin="0,4,0,8"/>
 
-            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,0,0,12">
-                <TextBlock Text="TOTAL:" FontSize="17" FontWeight="Bold" Foreground="Black"/>
-                <TextBlock x:Name="TxtTotal" FontSize="24" FontWeight="Bold" Foreground="Black" Margin="10,0,0,0"/>
+            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,4,0,12">
+                <TextBlock Text="TOTAL:" FontSize="15" FontWeight="Bold" Foreground="Black"/>
+                <TextBlock x:Name="TxtTotal" FontSize="18" FontWeight="Bold" Foreground="Black" Margin="8,0,0,0"/>
             </StackPanel>
 
             <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,12"/>
 
-            <TextBlock Text="PAGAMENTO" FontSize="13" FontWeight="Bold" Foreground="Black" Margin="0,0,0,8"/>
+            <TextBlock Text="PAGAMENTO" FontSize="11" FontWeight="Bold" Foreground="Black" Margin="0,2,0,8"/>
 
             <StackPanel Style="{StaticResource CupomLinha}" Margin="0,0,0,12">
                 <TextBlock Text="Forma:" Style="{StaticResource CupomRotulo}"/>
@@ -140,7 +140,7 @@
             <TextBlock x:Name="TxtRodape"
                        HorizontalAlignment="Stretch"
                        TextAlignment="Center"
-                       FontSize="14"
+                       FontSize="12"
                        FontWeight="SemiBold"
                        Foreground="Black"
                        FontStyle="Italic"/>
