@@ -11,9 +11,12 @@ namespace FTO_App.Services
     /// </summary>
     public static class EnvFileHelper
     {
+        // Chave fora desta lista é apagada pelo WriteClean — ao acrescentar configuração nova no
+        // .env, incluir aqui E no WriteClean, senão ela some na primeira limpeza.
         private static readonly HashSet<string> AllowedKeys = new(StringComparer.OrdinalIgnoreCase)
         {
-            "PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD", "DATABASE_URL", "FTO_UPDATE_TOKEN"
+            "PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD", "DATABASE_URL", "FTO_UPDATE_TOKEN",
+            "BACKUP_DESTINO", "BACKUP_USUARIO", "BACKUP_SENHA", "BACKUP_PG_DUMP"
         };
 
         private static readonly string[] BusinessPrefixes =
@@ -44,8 +47,11 @@ namespace FTO_App.Services
             WriteClean(path, map);
         }
 
+        /// <summary>Senhas do .env que são gravadas em claro pelo usuário e criptografadas depois.</summary>
+        private static readonly string[] PasswordKeys = { "PGPASSWORD", "BACKUP_SENHA" };
+
         /// <summary>
-        /// Criptografa só o PGPASSWORD no .env, preservando demais chaves
+        /// Criptografa as senhas do .env no lugar, preservando demais chaves
         /// (ex.: EMPRESA_* ainda não migradas para o banco).
         /// </summary>
         public static void ProtectPasswordInPlace(string path)
@@ -53,22 +59,24 @@ namespace FTO_App.Services
             if (!File.Exists(path)) return;
             var lines = File.ReadAllLines(path).ToList();
             bool changed = false;
+
             for (int i = 0; i < lines.Count; i++)
             {
                 string line = lines[i].Trim();
                 if (line.Length == 0 || line.StartsWith('#')) continue;
                 int idx = line.IndexOf('=');
                 if (idx <= 0) continue;
-                if (!line[..idx].Trim().Equals("PGPASSWORD", StringComparison.OrdinalIgnoreCase))
+
+                string chave = line[..idx].Trim();
+                if (!PasswordKeys.Contains(chave, StringComparer.OrdinalIgnoreCase))
                     continue;
 
                 string raw = line[(idx + 1)..].Trim().Trim('"');
                 if (string.IsNullOrEmpty(raw) || SecretProtector.IsProtected(raw))
-                    return;
+                    continue;
 
-                lines[i] = "PGPASSWORD=" + SecretProtector.Protect(raw);
+                lines[i] = $"{chave.ToUpperInvariant()}=" + SecretProtector.Protect(raw);
                 changed = true;
-                break;
             }
 
             if (changed)
@@ -109,6 +117,26 @@ namespace FTO_App.Services
 
             if (!string.IsNullOrWhiteSpace(token))
                 sb.AppendLine($"FTO_UPDATE_TOKEN={token}");
+
+            string destino = map.GetValueOrDefault("BACKUP_DESTINO", "");
+            if (!string.IsNullOrWhiteSpace(destino))
+            {
+                sb.AppendLine();
+                sb.AppendLine("# Servidor de backup (rede local).");
+                sb.AppendLine($"BACKUP_DESTINO={destino}");
+
+                string backupUser = map.GetValueOrDefault("BACKUP_USUARIO", "");
+                if (!string.IsNullOrWhiteSpace(backupUser))
+                    sb.AppendLine($"BACKUP_USUARIO={backupUser}");
+
+                string backupPass = map.GetValueOrDefault("BACKUP_SENHA", "");
+                if (!string.IsNullOrEmpty(backupPass))
+                    sb.AppendLine($"BACKUP_SENHA={SecretProtector.Protect(SecretProtector.Unprotect(backupPass))}");
+
+                string pgDump = map.GetValueOrDefault("BACKUP_PG_DUMP", "");
+                if (!string.IsNullOrWhiteSpace(pgDump))
+                    sb.AppendLine($"BACKUP_PG_DUMP={pgDump}");
+            }
 
             File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
         }

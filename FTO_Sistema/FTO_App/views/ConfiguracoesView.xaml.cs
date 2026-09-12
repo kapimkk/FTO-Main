@@ -78,6 +78,152 @@ namespace FTO_App.Views
             MostrarLogo(c.LogoPath);
             LoadDevices();
             AtualizarStatusBanco();
+            AtualizarStatusBackup();
+        }
+
+        private void AtualizarStatusBackup()
+        {
+            BackupConfig cfg = BackupService.LerConfig();
+
+            if (string.IsNullOrWhiteSpace(cfg.Destino))
+            {
+                LblBackupDestino.Text =
+                    $"❌ {BackupService.ChaveDestino} não configurado no .env " +
+                    $"(ex.: {BackupService.ChaveDestino}=\\\\192.168.0.10\\backup-sistema-fto)";
+                LblBackupDestino.Foreground = System.Windows.Media.Brushes.IndianRed;
+                BtnBackupAgora.IsEnabled = false;
+            }
+            else
+            {
+                string credencial = string.IsNullOrWhiteSpace(cfg.Usuario)
+                    ? "credencial do Windows"
+                    : $"usuário '{cfg.Usuario}'";
+                LblBackupDestino.Text = $"✅ Destino: {cfg.Destino}   ({credencial})";
+                LblBackupDestino.Foreground = System.Windows.Media.Brushes.SeaGreen;
+                BtnBackupAgora.IsEnabled = true;
+            }
+
+            string? pgDump = BackupService.LocalizarPgDump(cfg.PgDump);
+            if (pgDump == null)
+            {
+                LblBackupPgDump.Text =
+                    $"⚠️ pg_dump.exe não encontrado — o banco NÃO entra no backup. " +
+                    $"Informe o caminho em {BackupService.ChavePgDump} no .env.";
+                LblBackupPgDump.Foreground = System.Windows.Media.Brushes.DarkOrange;
+            }
+            else
+            {
+                LblBackupPgDump.Text = $"✅ pg_dump: {pgDump}";
+                LblBackupPgDump.Foreground = System.Windows.Media.Brushes.SeaGreen;
+            }
+        }
+
+        private async void BtnBackupAgora_Click(object sender, RoutedEventArgs e)
+        {
+            var botao = (Button)sender;
+            string rotulo = botao.Content?.ToString() ?? "🗄️ Realizar backup do sistema";
+
+            botao.IsEnabled = false;
+            TxtBackupLog.Visibility = Visibility.Visible;
+            TxtBackupLog.Text = "Iniciando backup...\r\n";
+
+            var progresso = new Progress<string>(status =>
+            {
+                botao.Content = status;
+                TxtBackupLog.AppendText($"{DateTime.Now:HH:mm:ss}  {status}\r\n");
+                TxtBackupLog.ScrollToEnd();
+            });
+
+            try
+            {
+                BackupResultado r = await BackupService.ExecutarAsync(progresso);
+                TxtBackupLog.AppendText("\r\n" + DescreverResultado(r));
+                TxtBackupLog.ScrollToEnd();
+
+                if (!r.Sucesso)
+                {
+                    MessageBox.Show(r.Erro ?? "Não foi possível concluir o backup.",
+                        "Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                MessageBox.Show(
+                    r.Avisos.Count == 0
+                        ? $"Backup concluído com sucesso.\n\n{r.PastaDestino}"
+                        : $"Backup enviado, mas com {r.Avisos.Count} item(ns) de fora.\n\n" +
+                          $"{r.PastaDestino}\n\nVeja o detalhe abaixo do botão e no RESUMO.txt.",
+                    "Backup",
+                    MessageBoxButton.OK,
+                    r.Avisos.Count == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            }
+            catch (Exception ex)
+            {
+                TxtBackupLog.AppendText($"\r\nERRO: {ex.Message}\r\n");
+                MessageBox.Show($"Falha no backup.\n\n{ex.Message}",
+                    "Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                botao.Content = rotulo;
+                botao.IsEnabled = true;
+            }
+        }
+
+        private static string DescreverResultado(BackupResultado r)
+        {
+            var sb = new System.Text.StringBuilder();
+
+            sb.AppendLine("INCLUÍDO:");
+            foreach (string item in r.Itens) sb.AppendLine($"  - {item}");
+            if (r.Itens.Count == 0) sb.AppendLine("  (nada)");
+
+            if (r.Avisos.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("NÃO ENTROU:");
+                foreach (string aviso in r.Avisos) sb.AppendLine($"  - {aviso}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(r.PastaDestino))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"Pasta: {r.PastaDestino}");
+            }
+
+            return sb.ToString();
+        }
+
+        private void BtnAbrirPastaBackup_Click(object sender, RoutedEventArgs e)
+        {
+            BackupConfig cfg = BackupService.LerConfig();
+            if (string.IsNullOrWhiteSpace(cfg.Destino))
+            {
+                MessageBox.Show($"Configure {BackupService.ChaveDestino} no .env primeiro.",
+                    "Backup", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                using var conexao = ConexaoRedeWindows.Abrir(cfg.Destino, cfg.Usuario, cfg.Senha);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = cfg.Destino,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Não foi possível abrir {cfg.Destino}.\n\n{ex.Message}",
+                    "Backup", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnRecarregarBackup_Click(object sender, RoutedEventArgs e)
+        {
+            AtualizarStatusBackup();
+            MessageBox.Show("Configuração de backup relida do .env.",
+                "Backup", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void AtualizarStatusBanco()

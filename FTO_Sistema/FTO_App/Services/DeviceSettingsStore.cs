@@ -14,6 +14,9 @@ namespace FTO_App.Services
 
         private static readonly string SettingsPath = Path.Combine(SettingsDir, "devices.json");
 
+        /// <summary>Onde o arquivo fica — o backup precisa saber para incluí-lo.</summary>
+        public static string CaminhoArquivo => SettingsPath;
+
         public static DeviceSettings Current { get; private set; } = new DeviceSettings();
 
         public static void Load()
