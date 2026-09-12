@@ -49,11 +49,14 @@ jobs:
           "version=$ver" >> $env:GITHUB_OUTPUT
           Write-Host "Release tag=$tag (normalizada=$normalizedTag) version=$ver"
 
-      # Arquivo único e comprimido: o pacote sai de 304 arquivos / 192 MB para 25 / 86 MB.
-      # O ganho maior não é o download (80 -> 74 MB), é o lado do cliente — extrair o ZIP e
-      # copiar a pasta com o antivírus varrendo 304 arquivos era o que fazia a atualização
-      # levar minutos.
-      - name: Publish win-x64 (self-contained, arquivo único)
+      # NÃO usar PublishSingleFile aqui sem validar o app inteiro antes.
+      # A v3.0.0 saiu em arquivo único e não abria no cliente: o WPF resolvia
+      # Icon="icons/fto.ico" pelo arquivo em disco (efeito de o ícone ser Content além de
+      # Resource) e essa resolução depende do caminho do assembly de entrada, que é vazio em
+      # single-file — o MainWindow morria com "TypeConverterMarkupExtension iniciou uma exceção".
+      # O csproj já foi corrigido e o login abre em single-file, mas voltar para o layout
+      # multi-arquivo, que roda em produção desde sempre, é o que garante a atualização.
+      - name: Publish win-x64 (self-contained)
         shell: pwsh
         run: |
           $ver = "${{ steps.version.outputs.version }}"
@@ -69,9 +72,6 @@ jobs:
             -p:PublishReadyToRun=false `
             -p:DebugType=none `
             -p:DebugSymbols=false `
-            -p:PublishSingleFile=true `
-            -p:EnableCompressionInSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
             -o "FTO_Sistema/publish/FTO_App-win-x64"
 
       - name: Compactar ZIP

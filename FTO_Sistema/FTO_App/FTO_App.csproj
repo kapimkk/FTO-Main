@@ -31,14 +31,15 @@
   </ItemGroup>
 
     <ItemGroup>
+    <!-- Só Resource (embutido no assembly), NUNCA também Content.
+         Quando o mesmo arquivo é Content, o WPF grava um AssemblyAssociatedContentFile e passa a
+         resolver Icon="icons/fto.ico" e Source="/icons/fto.png" pelo ARQUIVO EM DISCO em vez do
+         recurso embutido. Essa resolução depende do caminho do assembly de entrada, que é vazio
+         num publish PublishSingleFile — e o MainWindow morria no load com
+         "TypeConverterMarkupExtension iniciou uma exceção". Nada no código lê esses arquivos por
+         caminho, então Content aqui era só duplicação. -->
     <Resource Include="icons/fto.png" />
     <Resource Include="icons/fto.ico" />
-    <Content Include="icons/fto.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="icons/fto.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="Resources\nfse-logo-horizontal.png" Condition="Exists('$(MSBuildProjectDirectory)\Resources\nfse-logo-horizontal.png')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
