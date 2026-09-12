@@ -199,7 +199,9 @@ namespace FTO_App.Services
                     page.ContinuousSize(80, Unit.Millimetre);
                     page.MarginVertical(8, Unit.Millimetre);
                     page.MarginHorizontal(6, Unit.Millimetre);
-                    page.DefaultTextStyle(x => x.FontSize(8));
+                    // Corpo 7pt = 9 DIP no ReceiptCupomView (1 DIP = 0,75 pt): PDF e bobina saem
+                    // com a mesma tipografia, no mesmo tamanho físico.
+                    page.DefaultTextStyle(x => x.FontSize(7));
 
                     page.Content().Column(col =>
                     {
@@ -208,55 +210,55 @@ namespace FTO_App.Services
                         col.Item().AlignCenter().Column(blocoEmpresa =>
                         {
                             blocoEmpresa.Spacing(1);
-                            blocoEmpresa.Item().Text(empresa.Nome).Bold().FontSize(11);
+                            blocoEmpresa.Item().Text(empresa.Nome).Bold().FontSize(9);
                             if (!string.IsNullOrWhiteSpace(empresa.Subtitulo))
-                                blocoEmpresa.Item().Text(empresa.Subtitulo).SemiBold().FontSize(8);
+                                blocoEmpresa.Item().Text(empresa.Subtitulo).SemiBold().FontSize(6);
 
                             if (!string.IsNullOrWhiteSpace(empresa.Endereco))
-                                blocoEmpresa.Item().Text(empresa.Endereco).FontSize(8);
+                                blocoEmpresa.Item().Text(empresa.Endereco).FontSize(6);
                             if (!string.IsNullOrWhiteSpace(empresa.Cidade))
-                                blocoEmpresa.Item().Text(empresa.Cidade).FontSize(8);
+                                blocoEmpresa.Item().Text(empresa.Cidade).FontSize(6);
                             if (!string.IsNullOrWhiteSpace(empresa.TelefoneExibicao))
-                                blocoEmpresa.Item().Text(empresa.TelefoneExibicao).FontSize(8);
+                                blocoEmpresa.Item().Text(empresa.TelefoneExibicao).FontSize(6);
                             if (!string.IsNullOrWhiteSpace(empresa.CnpjExibicao))
-                                blocoEmpresa.Item().Text(empresa.CnpjExibicao).FontSize(8);
+                                blocoEmpresa.Item().Text(empresa.CnpjExibicao).FontSize(6);
                             if (!string.IsNullOrWhiteSpace(empresa.IeExibicao))
-                                blocoEmpresa.Item().Text(empresa.IeExibicao).FontSize(8);
+                                blocoEmpresa.Item().Text(empresa.IeExibicao).FontSize(6);
 
-                            blocoEmpresa.Item().PaddingTop(2).Text(empresa.CupomTitulo).Bold().FontSize(8);
+                            blocoEmpresa.Item().PaddingTop(2).Text(empresa.CupomTitulo).Bold().FontSize(6.5f);
                         });
 
-                        col.Item().PaddingTop(6).PaddingBottom(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        col.Item().PaddingTop(5).PaddingBottom(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
                         col.Item().Element(c => LinhaRotuloValor(c, "Venda Nº:", venda.Id.ToString(PtBr)));
                         col.Item().Element(c => LinhaRotuloValor(c, "Data:", venda.DataFormatada));
                         col.Item().Element(c => LinhaRotuloValor(c, "Impresso em:", impressoEm));
                         col.Item().Element(c => LinhaRotuloValor(c, "Cliente:", cliente));
 
-                        col.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        col.Item().PaddingVertical(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
-                        col.Item().Text("Itens / descrição:").SemiBold().FontSize(8);
-                        col.Item().Text(servico).SemiBold().FontSize(8);
+                        col.Item().Text("Itens / descrição:").SemiBold().FontSize(7);
+                        col.Item().Text(servico).SemiBold().FontSize(7);
 
-                        col.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        col.Item().PaddingVertical(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
                         col.Item().LineHorizontal(1.5f).LineColor("#1e3a5f");
 
                         col.Item().Row(row =>
                         {
-                            row.RelativeItem().Text("TOTAL:").Bold().FontSize(10);
-                            row.ConstantItem(100).AlignRight().Text(venda.VendaValor.ToString("C2", PtBr)).Bold().FontSize(12);
+                            row.RelativeItem().Text("TOTAL:").Bold().FontSize(8.5f);
+                            row.ConstantItem(100).AlignRight().Text(venda.VendaValor.ToString("C2", PtBr)).Bold().FontSize(10);
                         });
 
-                        col.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        col.Item().PaddingVertical(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
-                        col.Item().Text("PAGAMENTO").Bold().FontSize(8);
+                        col.Item().Text("PAGAMENTO").Bold().FontSize(6.5f);
                         col.Item().Element(c => LinhaRotuloValor(c, "Forma:", formaPag));
 
-                        col.Item().PaddingVertical(4).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                        col.Item().PaddingVertical(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
 
                         if (!string.IsNullOrWhiteSpace(empresa.CupomRodape))
                         {
-                            col.Item().AlignCenter().Text(empresa.CupomRodape).Italic().FontSize(8);
+                            col.Item().AlignCenter().Text(empresa.CupomRodape).Italic().FontSize(7);
                         }
                     });
                 });

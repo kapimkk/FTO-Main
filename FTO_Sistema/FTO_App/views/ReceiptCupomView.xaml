@@ -16,21 +16,21 @@
         </Style>
 
         <Style x:Key="CupomRotulo" TargetType="TextBlock" BasedOn="{StaticResource CupomTexto}">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="9"/>
         </Style>
 
         <Style x:Key="CupomValor" TargetType="TextBlock" BasedOn="{StaticResource CupomTexto}">
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="9"/>
             <Setter Property="Margin" Value="5,0,0,0"/>
         </Style>
 
         <Style x:Key="CupomLinha" TargetType="StackPanel">
             <Setter Property="Orientation" Value="Horizontal"/>
-            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
         <Style x:Key="CupomEmpresaDetalhe" TargetType="TextBlock" BasedOn="{StaticResource CupomTexto}">
-            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontSize" Value="8"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -46,21 +46,21 @@
     <Border x:Name="BorderCupom"
             Width="302"
             Background="White"
-            Padding="10,18"
+            Padding="14,12,14,14"
             HorizontalAlignment="Center"
             RenderOptions.BitmapScalingMode="HighQuality"
             TextOptions.TextRenderingMode="ClearType"
             TextOptions.TextFormattingMode="Display">
         <StackPanel HorizontalAlignment="Stretch">
-            <StackPanel HorizontalAlignment="Stretch" Margin="0,0,0,14">
+            <StackPanel HorizontalAlignment="Stretch" Margin="0,0,0,10">
                 <TextBlock x:Name="TxtEmpresaNome"
                            Style="{StaticResource CupomEmpresaTitulo}"
-                           FontSize="16"
+                           FontSize="12"
                            FontWeight="Bold"
                            Foreground="Black"/>
                 <TextBlock x:Name="TxtEmpresaSubtitulo"
                            Style="{StaticResource CupomEmpresaTitulo}"
-                           FontSize="10"
+                           FontSize="8"
                            FontWeight="SemiBold"
                            Foreground="Black"
                            Margin="0,2,0,0"/>
@@ -81,13 +81,13 @@
                            Margin="0,3,0,0"/>
                 <TextBlock x:Name="TxtCupomTitulo"
                            Style="{StaticResource CupomEmpresaTitulo}"
-                           FontSize="11"
+                           FontSize="8.5"
                            FontWeight="Bold"
                            Foreground="Black"
-                           Margin="0,6,0,0"/>
+                           Margin="0,5,0,0"/>
             </StackPanel>
 
-            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,12"/>
+            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,9"/>
 
             <StackPanel Style="{StaticResource CupomLinha}">
                 <TextBlock Text="Venda Nº:" Style="{StaticResource CupomRotulo}"/>
@@ -101,46 +101,46 @@
                 <TextBlock Text="Impresso em:" Style="{StaticResource CupomRotulo}"/>
                 <TextBlock x:Name="TxtImpressoEm" Style="{StaticResource CupomValor}"/>
             </StackPanel>
-            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,0,0,12">
+            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,0,0,9">
                 <TextBlock Text="Cliente:" Style="{StaticResource CupomRotulo}"/>
                 <TextBlock x:Name="TxtCliente" Style="{StaticResource CupomValor}" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,12"/>
+            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,9"/>
 
-            <StackPanel Margin="0,0,0,12">
-                <TextBlock Text="Itens / descrição:" Style="{StaticResource CupomRotulo}" Margin="0,0,0,4"/>
+            <StackPanel Margin="0,0,0,9">
+                <TextBlock Text="Itens / descrição:" Style="{StaticResource CupomRotulo}" Margin="0,0,0,3"/>
                 <TextBlock x:Name="TxtServico"
-                           FontSize="11"
+                           FontSize="9"
                            FontWeight="SemiBold"
                            Foreground="Black"
                            TextWrapping="Wrap"/>
             </StackPanel>
 
-            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,8"/>
+            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,6"/>
 
-            <Border Height="2" Background="{DynamicResource PrimaryColor}" Margin="0,4,0,8"/>
+            <Border Height="2" Background="{DynamicResource PrimaryColor}" Margin="0,3,0,6"/>
 
-            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,4,0,12">
-                <TextBlock Text="TOTAL:" FontSize="15" FontWeight="Bold" Foreground="Black"/>
-                <TextBlock x:Name="TxtTotal" FontSize="18" FontWeight="Bold" Foreground="Black" Margin="8,0,0,0"/>
+            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,3,0,9">
+                <TextBlock Text="TOTAL:" FontSize="11" FontWeight="Bold" Foreground="Black"/>
+                <TextBlock x:Name="TxtTotal" FontSize="13" FontWeight="Bold" Foreground="Black" Margin="8,0,0,0"/>
             </StackPanel>
 
-            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,12"/>
+            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,9"/>
 
-            <TextBlock Text="PAGAMENTO" FontSize="11" FontWeight="Bold" Foreground="Black" Margin="0,2,0,8"/>
+            <TextBlock Text="PAGAMENTO" FontSize="8.5" FontWeight="Bold" Foreground="Black" Margin="0,2,0,6"/>
 
-            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,0,0,12">
+            <StackPanel Style="{StaticResource CupomLinha}" Margin="0,0,0,9">
                 <TextBlock Text="Forma:" Style="{StaticResource CupomRotulo}"/>
                 <TextBlock x:Name="TxtFormaPagamento" Style="{StaticResource CupomValor}"/>
             </StackPanel>
 
-            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,12"/>
+            <Border Height="1" Background="Black" Opacity="0.15" Margin="0,0,0,9"/>
 
             <TextBlock x:Name="TxtRodape"
                        HorizontalAlignment="Stretch"
                        TextAlignment="Center"
-                       FontSize="12"
+                       FontSize="9"
                        FontWeight="SemiBold"
                        Foreground="Black"
                        FontStyle="Italic"/>
