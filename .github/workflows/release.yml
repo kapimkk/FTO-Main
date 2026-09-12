@@ -49,7 +49,11 @@ jobs:
           "version=$ver" >> $env:GITHUB_OUTPUT
           Write-Host "Release tag=$tag (normalizada=$normalizedTag) version=$ver"
 
-      - name: Publish win-x64 (self-contained)
+      # Arquivo único e comprimido: o pacote sai de 304 arquivos / 192 MB para 25 / 86 MB.
+      # O ganho maior não é o download (80 -> 74 MB), é o lado do cliente — extrair o ZIP e
+      # copiar a pasta com o antivírus varrendo 304 arquivos era o que fazia a atualização
+      # levar minutos.
+      - name: Publish win-x64 (self-contained, arquivo único)
         shell: pwsh
         run: |
           $ver = "${{ steps.version.outputs.version }}"
@@ -65,16 +69,29 @@ jobs:
             -p:PublishReadyToRun=false `
             -p:DebugType=none `
             -p:DebugSymbols=false `
+            -p:PublishSingleFile=true `
+            -p:EnableCompressionInSingleFile=true `
             -p:IncludeNativeLibrariesForSelfExtract=true `
             -o "FTO_Sistema/publish/FTO_App-win-x64"
 
       - name: Compactar ZIP
         shell: pwsh
         run: |
+          $dir = "FTO_Sistema/publish/FTO_App-win-x64"
           $zip = "FTO_App-win-x64.zip"
           if (Test-Path $zip) { Remove-Item $zip -Force }
-          Compress-Archive -Path "FTO_Sistema/publish/FTO_App-win-x64/*" -DestinationPath $zip -Force
-          Get-Item $zip | Format-List Name, Length, FullName
+
+          if (-not (Test-Path "$dir/FTO_App.exe")) { throw "Publish não gerou FTO_App.exe." }
+          # .env local nunca pode ir junto no pacote público.
+          Remove-Item "$dir/.env" -Force -ErrorAction SilentlyContinue
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            (Resolve-Path $dir), (Join-Path (Get-Location) $zip), 'Optimal', $false)
+
+          $tamanho = (Get-Item $zip).Length / 1MB
+          $arquivos = (Get-ChildItem $dir -Recurse -File).Count
+          Write-Host ("Pacote: {0:N1} MB a partir de {1} arquivos" -f $tamanho, $arquivos)
 
       - name: Anexar ZIP na Release
         env:

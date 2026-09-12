@@ -23,6 +23,13 @@ namespace FTO_App.Services
         public const string GitHubRepo = "FTO-Main";
         public const string PreferredAssetName = "FTO_App-win-x64.zip";
 
+        /// <summary>1 MB por leitura: o padrão do CopyToAsync é 80 KB, e o FileStream padrão
+        /// grava síncrono em blocos de 4 KB — muita ida ao disco para um pacote de dezenas de MB.</summary>
+        private const int BufferBytes = 1024 * 1024;
+
+        /// <summary>Ritmo do texto de andamento. Mais rápido que isso só pisca no botão.</summary>
+        private static readonly TimeSpan IntervaloProgresso = TimeSpan.FromSeconds(1);
+
         private static readonly string[] PreserveFileNames =
         {
             ".env",
@@ -112,12 +119,29 @@ namespace FTO_App.Services
             Directory.CreateDirectory(extractDir);
 
             progress?.Report("Baixando pacote...");
-            using (var client = CreateHttpClient())
+            long baixados;
+            long esperados;
+            using (var client = CreateHttpClient(paraDownloadBinario: true))
             using (var response = await client.GetAsync(check.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
             {
                 response.EnsureSuccessStatusCode();
-                await using var fs = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None);
-                await response.Content.CopyToAsync(fs, ct).ConfigureAwait(false);
+                esperados = response.Content.Headers.ContentLength ?? check.AssetSizeBytes;
+
+                await using var origem = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+                await using var destino = new FileStream(
+                    zipPath, FileMode.Create, FileAccess.Write, FileShare.None, BufferBytes, useAsync: true);
+
+                baixados = await CopiarComProgressoAsync(origem, destino, esperados, progress, ct).ConfigureAwait(false);
+            }
+
+            // Sem esta checagem, um download cortado no meio só aparece depois, como um erro de
+            // ZIP corrompido ("End of Central Directory record could not be found") — que não diz
+            // ao usuário que o problema foi a conexão.
+            if (esperados > 0 && baixados != esperados)
+            {
+                throw new IOException(
+                    $"Download incompleto: {baixados / 1048576.0:0.#} MB de {esperados / 1048576.0:0.#} MB. " +
+                    "Verifique a conexão e tente novamente.");
             }
 
             progress?.Report("Extraindo arquivos...");
@@ -148,10 +172,60 @@ namespace FTO_App.Services
             Process.Start(psi);
         }
 
-        private static HttpClient CreateHttpClient()
+        /// <summary>
+        /// Copia o pacote reportando andamento. Sem isso o botão fica parado em
+        /// "Baixando pacote..." por minutos e o usuário conclui que travou.
+        /// </summary>
+        private static async Task<long> CopiarComProgressoAsync(
+            Stream origem, Stream destino, long total, IProgress<string>? progress, CancellationToken ct)
         {
-            var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            byte[] buffer = new byte[BufferBytes];
+            long lidos = 0;
+            var relogio = Stopwatch.StartNew();
+            TimeSpan ultimoAviso = TimeSpan.Zero;
+
+            int n;
+            while ((n = await origem.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
+            {
+                await destino.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
+                lidos += n;
+
+                if (relogio.Elapsed - ultimoAviso < IntervaloProgresso) continue;
+                ultimoAviso = relogio.Elapsed;
+                progress?.Report(DescreverProgresso(lidos, total, relogio.Elapsed));
+            }
+
+            return lidos;
+        }
+
+        private static string DescreverProgresso(long lidos, long total, TimeSpan decorrido)
+        {
+            double mb = lidos / 1048576.0;
+            double mbPorSegundo = decorrido.TotalSeconds > 0 ? mb / decorrido.TotalSeconds : 0;
+
+            if (total <= 0)
+                return $"Baixando {mb:0.#} MB ({mbPorSegundo:0.#} MB/s)";
+
+            return $"Baixando {lidos * 100 / total}% " +
+                   $"({mb:0.#}/{total / 1048576.0:0.#} MB · {mbPorSegundo:0.#} MB/s)";
+        }
+
+        /// <param name="paraDownloadBinario">
+        /// O download do asset sai por redirecionamento para o CDN do GitHub, que não é a API:
+        /// mandar Accept de JSON da API e o token para lá não ajuda em nada e só atrapalha a
+        /// negociação. Este cliente vai limpo, só com o User-Agent.
+        /// </param>
+        private static HttpClient CreateHttpClient(bool paraDownloadBinario = false)
+        {
+            var client = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
             client.DefaultRequestHeaders.UserAgent.ParseAdd("FTO-App-Updater");
+
+            if (paraDownloadBinario)
+            {
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/octet-stream"));
+                return client;
+            }
+
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
 
@@ -253,7 +327,7 @@ namespace FTO_App.Services
 
         private static string BuildApplyUpdateScript()
         {
-            string preserveList = string.Join(", ", PreserveFileNames.Select(n => $"'{n}'"));
+            string preserveList = string.Join(" ", PreserveFileNames.Select(n => $"'{n}'"));
             return $$"""
 param(
     [Parameter(Mandatory = $true)][string]$Source,
@@ -263,23 +337,21 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$preserve = @({{preserveList}})
 
 if ($WaitPid -gt 0) {
     try { Wait-Process -Id $WaitPid -Timeout 90 -ErrorAction SilentlyContinue } catch {}
 }
 Start-Sleep -Seconds 2
 
-Get-ChildItem -LiteralPath $Source -Recurse -File | ForEach-Object {
-    $rel = $_.FullName.Substring($Source.Length).TrimStart('\', '/')
-    if ($preserve -contains $_.Name) { return }
+# robocopy num processo só: copiar arquivo a arquivo com Copy-Item faz o antivírus abrir e
+# varrer cada um separadamente, o que dominava o tempo da atualização.
+$excluir = @({{preserveList}})
+$argumentos = @($Source, $Target, '/E', '/NFL', '/NDL', '/NJH', '/NJS', '/NP', '/R:2', '/W:1', '/XF') + $excluir
+& robocopy.exe @argumentos | Out-Null
 
-    $dest = Join-Path $Target $rel
-    $destDir = Split-Path -Parent $dest
-    if (-not (Test-Path -LiteralPath $destDir)) {
-        New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-    }
-    Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
+# robocopy usa 0-7 para sucesso (8+ é falha real); só a partir de 8 vale abortar.
+if ($LASTEXITCODE -ge 8) {
+    throw "Falha ao copiar os arquivos da atualização (robocopy $LASTEXITCODE)."
 }
 
 Start-Sleep -Seconds 1

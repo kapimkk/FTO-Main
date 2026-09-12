@@ -22,8 +22,10 @@
     <PackageReference Include="Npgsql" Version="8.0.6" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
     <PackageReference Include="QuestPDF" Version="2024.12.3" />
-    <PackageReference Include="System.Data.SQLite" Version="1.0.118" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+    <!-- .Core em vez do pacote completo: o SQLite só é lido pelo migrador legado
+         (SqliteToPostgresMigrator) e o pacote completo arrasta o Entity Framework 6,
+         que o app não usa (~6 MB no pacote de atualização). -->
+    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
     <PackageReference Include="System.Management" Version="8.0.0" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
