@@ -136,6 +136,28 @@ namespace FTO_App.Views
         private void BtnFecharForm_Click(object sender, RoutedEventArgs e) =>
             FormOverlay.Visibility = Visibility.Collapsed;
 
+        /// <summary>Selo no cabeçalho do formulário: deixa claro, sem abrir o combo, onde a DPS vai ser transmitida.</summary>
+        private void CbAmbienteNfse_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LblBadgeAmbienteNfse == null || BadgeAmbienteNfse == null) return;
+            bool homolog = (CbAmbiente.SelectedItem as ComboBoxItem)?.Tag?.ToString() != "1";
+
+            LblBadgeAmbienteNfse.Text = homolog ? "HOMOLOGAÇÃO" : "PRODUÇÃO";
+            BadgeAmbienteNfse.Background = new System.Windows.Media.SolidColorBrush(homolog
+                ? System.Windows.Media.Color.FromRgb(0xFE, 0xF3, 0xC7)
+                : System.Windows.Media.Color.FromRgb(0xDC, 0xFC, 0xE7));
+            LblBadgeAmbienteNfse.Foreground = new System.Windows.Media.SolidColorBrush(homolog
+                ? System.Windows.Media.Color.FromRgb(0xB4, 0x53, 0x09)
+                : System.Windows.Media.Color.FromRgb(0x15, 0x80, 0x3D));
+        }
+
+        private void TxtValorServico_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (LblResumoValorNfse == null) return;
+            LblResumoValorNfse.Text = MoneyInputHelper.Parse(TxtValorServico.Text)
+                .ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
+        }
+
         private void BtnSalvar_Click(object sender, RoutedEventArgs e)
         {
             try

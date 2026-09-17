@@ -1,0 +1,273 @@
+<Window x:Class="FTO_App.Views.NotaFiscalItemWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Item da NF-e" Width="860" Height="720" MinWidth="760" MinHeight="560"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" ResizeMode="CanResize"
+        Background="{StaticResource FormCanvasBrush}" FontFamily="Segoe UI">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabeçalho -->
+        <Border Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}" Padding="24,16"
+                BorderBrush="{StaticResource FormCardBorderBrush}" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="📦  Preencher do estoque" Style="{StaticResource SecondaryButtonStyle}"
+                        VerticalAlignment="Center" Click="BtnDoEstoque_Click"
+                        ToolTip="Escolhe um produto cadastrado no Estoque e preenche código, NCM, CFOP, preço e tributos."/>
+                <StackPanel>
+                    <TextBlock x:Name="LblTitulo" Text="Adicionar item" FontSize="19" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TitleBrush}"/>
+                    <TextBlock x:Name="LblSubtitulo" Text="Item 1 da nota" Style="{StaticResource FormSectionSubtitle}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,16,24,4">
+            <StackPanel>
+                <!-- Aviso de itens salvos em sequência -->
+                <Border x:Name="PainelAdicionados" Visibility="Collapsed" Background="#ECFDF5" BorderBrush="#A7F3D0"
+                        BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,12">
+                    <TextBlock x:Name="LblAdicionados" Foreground="#047857" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- 1. Produto -->
+                <Border Style="{StaticResource FormSectionCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                            <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="1" Style="{StaticResource FormStepText}"/></Border>
+                            <TextBlock Text="Produto" Style="{StaticResource FormSectionTitle}"/>
+                        </StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Style="{StaticResource FormField}">
+                                <TextBlock Text="Código" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCodigo" Style="{StaticResource ModernTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource FormField}">
+                                <TextBlock Text="Descrição *" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtDescricao" Style="{StaticResource ModernTextBox}" MaxLength="120"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource FormField}">
+                                <TextBlock Text="NCM *" Style="{StaticResource FormLabel}"/>
+                                <Grid>
+                                    <TextBox x:Name="TxtNcm" Style="{StaticResource ModernTextBox}" TextChanged="TxtNcm_TextChanged"
+                                             ToolTip="Digite 3+ caracteres (código ou palavra) para ver sugestões."/>
+                                    <Popup x:Name="PopupNcm" PlacementTarget="{Binding ElementName=TxtNcm}" Placement="Bottom"
+                                           StaysOpen="False" Width="380">
+                                        <Border Background="White" BorderBrush="{StaticResource FormCardBorderBrush}" BorderThickness="1"
+                                                CornerRadius="4" MaxHeight="240">
+                                            <ListBox x:Name="ListNcm" BorderThickness="0" MaxHeight="238"
+                                                     PreviewMouseLeftButtonUp="ListNcm_PreviewMouseLeftButtonUp"/>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+                                <TextBlock Text="8 dígitos · busca por código ou nome" Style="{StaticResource FormHint}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Style="{StaticResource FormField}">
+                                <TextBlock Text="CFOP *" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCfop" Style="{StaticResource ModernTextBox}" MaxLength="4" Text="5102"/>
+                                <TextBlock Text="5xxx interno · 6xxx interestadual" Style="{StaticResource FormHint}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="2" Style="{StaticResource FormField}">
+                                <TextBlock Text="CEST" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCest" Style="{StaticResource ModernTextBox}" MaxLength="9"/>
+                                <TextBlock Text="Obrigatório em ICMS-ST" Style="{StaticResource FormHint}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="3" Style="{StaticResource FormField}">
+                                <TextBlock Text="GTIN / EAN" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtGtin" Style="{StaticResource ModernTextBox}" Text="SEM GTIN"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="2" Grid.Column="0" Style="{StaticResource FormField}">
+                                <TextBlock Text="Unidade *" Style="{StaticResource FormLabel}"/>
+                                <ComboBox x:Name="CbUnidade" IsEditable="True" Text="UN">
+                                    <ComboBoxItem Content="UN"/><ComboBoxItem Content="PC"/><ComboBoxItem Content="CX"/>
+                                    <ComboBoxItem Content="KG"/><ComboBoxItem Content="LT"/><ComboBoxItem Content="MT"/>
+                                    <ComboBoxItem Content="M2"/><ComboBoxItem Content="HR"/><ComboBoxItem Content="KIT"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Style="{StaticResource FormField}">
+                                <TextBlock Text="Quantidade *" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtQuantidade" Style="{StaticResource ModernTextBox}" Text="1"
+                                         TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="2" Style="{StaticResource FormField}">
+                                <TextBlock Text="Valor unitário (R$) *" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtValorUnitario" Style="{StaticResource ModernTextBox}"
+                                         TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="2" Grid.Column="3" Style="{StaticResource FormField}">
+                                <TextBlock Text="Total do item" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtValorTotal" Style="{StaticResource FormReadOnlyBox}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2. ICMS / PIS / COFINS -->
+                <Border Style="{StaticResource FormSectionCard}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="2" Style="{StaticResource FormStepText}"/></Border>
+                            <TextBlock Text="ICMS, PIS e COFINS" Style="{StaticResource FormSectionTitle}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="LblRegime" Style="{StaticResource FormSectionSubtitle}" Margin="34,0,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel Grid.Row="0" Grid.Column="0" Style="{StaticResource FormField}">
+                                <TextBlock Text="Origem" Style="{StaticResource FormLabel}"/>
+                                <ComboBox x:Name="CbOrigem" SelectedIndex="0">
+                                    <ComboBoxItem Content="0 — Nacional" Tag="0"/>
+                                    <ComboBoxItem Content="1 — Estrangeira (importação direta)" Tag="1"/>
+                                    <ComboBoxItem Content="2 — Estrangeira (mercado interno)" Tag="2"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel x:Name="PanelCst" Grid.Row="0" Grid.Column="1" Style="{StaticResource FormField}">
+                                <TextBlock Text="CST ICMS" Style="{StaticResource FormLabel}"/>
+                                <ComboBox x:Name="CbCstIcms" IsEditable="True" Text="00">
+                                    <ComboBoxItem Content="00"/><ComboBoxItem Content="20"/><ComboBoxItem Content="40"/>
+                                    <ComboBoxItem Content="41"/><ComboBoxItem Content="50"/><ComboBoxItem Content="60"/>
+                                    <ComboBoxItem Content="90"/>
+                                </ComboBox>
+                                <TextBlock Text="40/41/50 não têm base de ICMS" Style="{StaticResource FormHint}"/>
+                            </StackPanel>
+                            <StackPanel x:Name="PanelCsosn" Grid.Row="0" Grid.Column="1" Style="{StaticResource FormField}">
+                                <TextBlock Text="CSOSN" Style="{StaticResource FormLabel}"/>
+                                <ComboBox x:Name="CbCsosn" IsEditable="True" Text="102">
+                                    <ComboBoxItem Content="101"/><ComboBoxItem Content="102"/><ComboBoxItem Content="103"/>
+                                    <ComboBoxItem Content="201"/><ComboBoxItem Content="202"/><ComboBoxItem Content="203"/>
+                                    <ComboBoxItem Content="300"/><ComboBoxItem Content="400"/><ComboBoxItem Content="500"/>
+                                    <ComboBoxItem Content="900"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="2" Style="{StaticResource FormField}">
+                                <TextBlock x:Name="LblIcmsAliq" Text="Alíquota ICMS %" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtIcmsAliq" Style="{StaticResource ModernTextBox}" Text="0"
+                                         TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="0" Grid.Column="3" Style="{StaticResource FormField}">
+                                <TextBlock x:Name="LblIcmsValor" Text="Valor ICMS" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtIcmsValor" Style="{StaticResource FormReadOnlyBox}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource FormField}">
+                                <TextBlock Text="CST PIS" Style="{StaticResource FormLabel}"/>
+                                <ComboBox x:Name="CbPisCst" IsEditable="True" Text="01">
+                                    <ComboBoxItem Content="01"/><ComboBoxItem Content="02"/><ComboBoxItem Content="04"/>
+                                    <ComboBoxItem Content="06"/><ComboBoxItem Content="07"/><ComboBoxItem Content="08"/>
+                                    <ComboBoxItem Content="09"/><ComboBoxItem Content="49"/><ComboBoxItem Content="99"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Style="{StaticResource FormField}">
+                                <TextBlock Text="PIS %" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtPisAliq" Style="{StaticResource ModernTextBox}" Text="0"
+                                         TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="2" Style="{StaticResource FormField}">
+                                <TextBlock Text="CST COFINS" Style="{StaticResource FormLabel}"/>
+                                <ComboBox x:Name="CbCofinsCst" IsEditable="True" Text="01">
+                                    <ComboBoxItem Content="01"/><ComboBoxItem Content="02"/><ComboBoxItem Content="04"/>
+                                    <ComboBoxItem Content="06"/><ComboBoxItem Content="07"/><ComboBoxItem Content="08"/>
+                                    <ComboBoxItem Content="09"/><ComboBoxItem Content="49"/><ComboBoxItem Content="99"/>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="3" Style="{StaticResource FormField}">
+                                <TextBlock Text="COFINS %" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCofinsAliq" Style="{StaticResource ModernTextBox}" Text="0"
+                                         TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 3. IBS / CBS -->
+                <Border Style="{StaticResource FormSectionCard}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,4">
+                            <CheckBox x:Name="ChkAutoIbsCbs" DockPanel.Dock="Right" Content="Cálculo automático"
+                                      IsChecked="True" VerticalAlignment="Center" Click="ChkAutoIbsCbs_Click"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="3" Style="{StaticResource FormStepText}"/></Border>
+                                <TextBlock Text="IBS / CBS (reforma tributária)" Style="{StaticResource FormSectionTitle}"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <TextBlock x:Name="LblIbsCbsInfo" Style="{StaticResource FormSectionSubtitle}" Margin="34,0,0,12"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Style="{StaticResource FormField}">
+                                <TextBlock Text="CST" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCstIbsCbs" Style="{StaticResource ModernTextBox}" Text="000" MaxLength="3"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Style="{StaticResource FormField}">
+                                <TextBlock Text="cClassTrib" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtClassTrib" Style="{StaticResource ModernTextBox}" Text="000001" MaxLength="6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Style="{StaticResource FormField}">
+                                <TextBlock Text="CBS %" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCbsAliq" Style="{StaticResource ModernTextBox}" TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Style="{StaticResource FormField}">
+                                <TextBlock Text="IBS %" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtIbsAliq" Style="{StaticResource ModernTextBox}" TextChanged="Valores_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" Style="{StaticResource FormField}">
+                                <TextBlock Text="CBS R$" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtCbsValor" Style="{StaticResource FormReadOnlyBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="5" Style="{StaticResource FormField}">
+                                <TextBlock Text="IBS R$" Style="{StaticResource FormLabel}"/>
+                                <TextBox x:Name="TxtIbsValor" Style="{StaticResource FormReadOnlyBox}"
+                                         ToolTip="Soma de IBS UF + IBS Municipal"/>
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Style="{StaticResource FormHint}" Margin="0,-6,0,8"
+                                   Text="Na transmissão a alíquota é sempre recalculada com os percentuais oficiais de transição do ano (LC 214/2025)."/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Rodapé -->
+        <Border Grid.Row="2" Background="{DynamicResource CardBackgroundBrush}" Padding="24,14"
+                BorderBrush="{StaticResource FormCardBorderBrush}" BorderThickness="0,1,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="TOTAL DO ITEM" Style="{StaticResource TotalLabel}"/>
+                    <TextBlock x:Name="LblTotalRodape" Text="R$ 0,00" FontSize="20" FontWeight="Bold"
+                               Foreground="{DynamicResource TitleBrush}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                            IsCancel="True" Click="BtnCancelar_Click"/>
+                    <Button x:Name="BtnSalvarEOutro" Content="＋  Salvar e adicionar outro" Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="0,0,8,0" Click="BtnSalvarEOutro_Click"
+                            ToolTip="Adiciona este item à nota e limpa o formulário para o próximo (Enter)."/>
+                    <Button x:Name="BtnSalvar" Content="✓  Adicionar item" Style="{StaticResource PrimaryButtonStyle}"
+                            Click="BtnSalvar_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

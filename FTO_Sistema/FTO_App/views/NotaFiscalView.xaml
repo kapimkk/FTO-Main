@@ -58,6 +58,7 @@
                         <DataGridTextColumn Header="Nº" Binding="{Binding NumeroExibicao}" Width="70"/>
                         <DataGridTextColumn Header="Emissão" Binding="{Binding DataEmissaoFormatada}" Width="120"/>
                         <DataGridTextColumn Header="Destinatário" Binding="{Binding DestNome}" Width="*"/>
+                        <DataGridTextColumn Header="Itens" Binding="{Binding ResumoItens}" Width="200"/>
                         <DataGridTextColumn Header="Total" Binding="{Binding ValorTotalFormatado}" Width="100"/>
                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
                         <DataGridTextColumn Header="Situação SEFAZ" Binding="{Binding SituacaoFiscalExibicao}" Width="220"/>
@@ -79,10 +80,13 @@
             </Grid>
         </Border>
 
-        <Grid x:Name="FormOverlay" Grid.RowSpan="3" Background="#99000000" Visibility="Collapsed" Panel.ZIndex="200">
-            <Border Background="{DynamicResource CardBackgroundBrush}" Margin="30,20" CornerRadius="8" Padding="16"
-                    MaxWidth="980" VerticalAlignment="Center" MaxHeight="680">
-                <Border.Effect><DropShadowEffect BlurRadius="24"/></Border.Effect>
+        <!-- ============================================================
+             Cadastro / edição da NF-e
+             ============================================================ -->
+        <Grid x:Name="FormOverlay" Grid.RowSpan="3" Background="#8C0F172A" Visibility="Collapsed" Panel.ZIndex="200">
+            <Border Background="{StaticResource FormCanvasBrush}" Margin="36,22" CornerRadius="10"
+                    MaxWidth="1180" MaxHeight="900" ClipToBounds="True">
+                <Border.Effect><DropShadowEffect BlurRadius="30" ShadowDepth="4" Opacity="0.35"/></Border.Effect>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -90,152 +94,434 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <DockPanel Margin="0,0,0,10">
-                        <TextBlock x:Name="LblFormTitulo" Text="Cadastrar nota fiscal" FontSize="18" FontWeight="Bold"
-                                   Foreground="{DynamicResource TitleBrush}"/>
-                        <Button DockPanel.Dock="Right" Content="✕" Width="32" Height="28" Click="BtnFecharForm_Click"
-                                Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                Foreground="{DynamicResource SecondaryTextBrush}"/>
-                    </DockPanel>
+                    <!-- Cabeçalho -->
+                    <Border Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}" Padding="26,16,16,16"
+                            CornerRadius="10,10,0,0" BorderBrush="{StaticResource FormCardBorderBrush}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕" Width="36" Height="36" Click="BtnFecharForm_Click"
+                                    Style="{StaticResource RowIconButtonStyle}" FontSize="15" VerticalAlignment="Top"
+                                    Foreground="{DynamicResource SecondaryTextBrush}" ToolTip="Fechar sem salvar"/>
+                            <Border x:Name="BadgeAmbiente" DockPanel.Dock="Right" CornerRadius="12" Padding="12,4"
+                                    Margin="0,0,12,0" VerticalAlignment="Center" Background="#FEF3C7">
+                                <TextBlock x:Name="LblBadgeAmbiente" Text="HOMOLOGAÇÃO" FontSize="11" FontWeight="Bold"
+                                           Foreground="#B45309"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock x:Name="LblFormTitulo" Text="Cadastrar NF-e" FontSize="20" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TitleBrush}"/>
+                                <TextBlock x:Name="LblFormSubtitulo" Text="Modelo 55" Style="{StaticResource FormSectionSubtitle}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
 
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="26,18,26,6">
                         <StackPanel>
-                            <TextBlock Text="Identificação (ide)" FontWeight="Bold" Foreground="{DynamicResource TitleBrush}" Margin="0,0,0,8"/>
-                            <WrapPanel>
-                                <StackPanel Width="260" Margin="0,0,10,8">
-                                    <TextBlock Text="Natureza da operação (descrição)"/>
-                                    <ComboBox x:Name="CbNatOp" IsEditable="True" SelectedIndex="0"
-                                              ToolTip="Texto livre enviado em natOp (máx. 60 caracteres). Não é CFOP — o CFOP fica no produto.">
-                                        <ComboBoxItem Content="Venda de mercadoria"/>
-                                        <ComboBoxItem Content="Venda a consumidor final"/>
-                                        <ComboBoxItem Content="Prestação de serviço"/>
-                                        <ComboBoxItem Content="Devolução de mercadoria"/>
-                                        <ComboBoxItem Content="Remessa para demonstração"/>
-                                        <ComboBoxItem Content="Bonificação"/>
-                                    </ComboBox>
-                                    <TextBlock Text="Descrição curta (não é código). CFOP é outro campo."
-                                               FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
-                                </StackPanel>
-                                <StackPanel Width="220" Margin="0,0,10,8">
-                                    <TextBlock Text="Modelo"/>
-                                    <TextBlock Text="55 — NF-e" FontWeight="SemiBold" Margin="0,4,0,0"
-                                               Foreground="{DynamicResource TitleBrush}"
-                                               ToolTip="Nota fiscal eletrônica (modelo 55)."/>
-                                </StackPanel>
-                                <StackPanel Width="80" Margin="0,0,10,8"><TextBlock Text="Série"/><TextBox x:Name="TxtSerie" Style="{StaticResource ModernTextBox}" Text="1"/></StackPanel>
-                                <StackPanel Width="100" Margin="0,0,10,8"><TextBlock Text="Número"/><TextBox x:Name="TxtNumero" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="160" Margin="0,0,10,8"><TextBlock Text="Data emissão"/><DatePicker x:Name="DpEmissao" Height="28"/></StackPanel>
-                                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Text="Tipo"/><ComboBox x:Name="CbTipoOp" SelectedIndex="1"><ComboBoxItem Content="0-Entrada" Tag="0"/><ComboBoxItem Content="1-Saída" Tag="1"/></ComboBox></StackPanel>
-                                <StackPanel Width="140" Margin="0,0,10,8">
-                                    <TextBlock Text="Ambiente"/>
-                                    <ComboBox x:Name="CbAmbiente" SelectedIndex="1" IsEnabled="False" SelectionChanged="CbAmbiente_SelectionChanged"
-                                              ToolTip="Definido em Configurações → Fiscal / NF-e. Para mudar, altere lá — passa a valer em toda nota nova.">
-                                        <ComboBoxItem Content="1-Produção" Tag="1"/>
-                                        <ComboBoxItem Content="2-Homologação" Tag="2"/>
-                                    </ComboBox>
-                                </StackPanel>
-                                <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Text="Finalidade"/><ComboBox x:Name="CbFinalidade" SelectedIndex="0"><ComboBoxItem Content="1-Normal" Tag="1"/><ComboBoxItem Content="2-Complementar" Tag="2"/><ComboBoxItem Content="3-Ajuste" Tag="3"/><ComboBoxItem Content="4-Devolução" Tag="4"/></ComboBox></StackPanel>
-                                <StackPanel Width="160" Margin="0,0,10,8"><TextBlock Text="Destino (idDest)"/><ComboBox x:Name="CbIdDest" SelectedIndex="0"><ComboBoxItem Content="1-Interna" Tag="1"/><ComboBoxItem Content="2-Interestadual" Tag="2"/><ComboBoxItem Content="3-Exterior" Tag="3"/></ComboBox></StackPanel>
-                                <StackPanel x:Name="PanelIndFinal" Width="150" Margin="0,0,10,8"><TextBlock Text="Consumidor final"/><ComboBox x:Name="CbIndFinal" SelectedIndex="1"><ComboBoxItem Content="0-Não" Tag="0"/><ComboBoxItem Content="1-Sim" Tag="1"/></ComboBox></StackPanel>
-                                <StackPanel x:Name="PanelIndPres" Width="160" Margin="0,0,10,8"><TextBlock Text="Presença (indPres)"/><ComboBox x:Name="CbIndPres" SelectedIndex="1"><ComboBoxItem Content="0-Não se aplica" Tag="0"/><ComboBoxItem Content="1-Presencial" Tag="1"/><ComboBoxItem Content="2-Internet" Tag="2"/><ComboBoxItem Content="3-Teleatendimento" Tag="3"/><ComboBoxItem Content="9-Outros" Tag="9"/></ComboBox></StackPanel>
-                            </WrapPanel>
-                            <TextBlock x:Name="LblHomologHint" Text="Homologação: dest.xNome e xProd serão ajustados automaticamente ao gerar o XML."
-                                       FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Visible"/>
 
-                            <TextBlock Text="Destinatário (dest)" FontWeight="Bold" Foreground="{DynamicResource TitleBrush}" Margin="0,10,0,8"/>
-                            <WrapPanel>
-                                <StackPanel Width="280" Margin="0,0,10,8"><TextBlock Text="Cliente cadastrado"/><ComboBox x:Name="CbCliente" DisplayMemberPath="Nome" SelectionChanged="CbCliente_SelectionChanged"/></StackPanel>
-                                <StackPanel Width="260" Margin="0,0,10,8"><TextBlock Text="Nome"/><TextBox x:Name="TxtDestNome" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="160" Margin="0,0,10,8"><TextBlock Text="CPF/CNPJ"/><TextBox x:Name="TxtDestDoc" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel x:Name="PanelIndIEDest" Width="180" Margin="0,0,10,8"><TextBlock Text="IE destinatário (indIEDest)"/><ComboBox x:Name="CbIndIEDest" SelectedIndex="2" SelectionChanged="CbIndIEDest_SelectionChanged"><ComboBoxItem Content="1-Contribuinte" Tag="1"/><ComboBoxItem Content="2-Isento" Tag="2"/><ComboBoxItem Content="9-Não contribuinte" Tag="9"/></ComboBox></StackPanel>
-                                <StackPanel x:Name="PanelDestIe" Width="120" Margin="0,0,10,8"><TextBlock Text="IE"/><TextBox x:Name="TxtDestIe" Style="{StaticResource ModernTextBox}" TextChanged="TxtDestIe_TextChanged"/></StackPanel>
-                                <StackPanel Width="220" Margin="0,0,10,8"><TextBlock Text="E-mail"/><TextBox x:Name="TxtDestEmail" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="260" Margin="0,0,10,8"><TextBlock Text="Logradouro"/><TextBox x:Name="TxtDestLgr" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="80" Margin="0,0,10,8"><TextBlock Text="Nº"/><TextBox x:Name="TxtDestNro" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="160" Margin="0,0,10,8"><TextBlock Text="Bairro"/><TextBox x:Name="TxtDestBairro" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="180" Margin="0,0,10,8"><TextBlock Text="Município"/><TextBox x:Name="TxtDestMun" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="60" Margin="0,0,10,8"><TextBlock Text="UF"/><TextBox x:Name="TxtDestUf" Style="{StaticResource ModernTextBox}" MaxLength="2" TextChanged="TxtDestUf_TextChanged"/></StackPanel>
-                                <StackPanel Width="140" Margin="0,0,10,8">
-                                    <TextBlock Text="CEP"/>
-                                    <TextBox x:Name="TxtDestCep" Style="{StaticResource ModernTextBox}"
-                                             KeyDown="TxtDestCep_KeyDown"
-                                             ToolTip="Digite o CEP e pressione Enter para preencher endereço e IBGE (ViaCEP)."/>
-                                    <TextBlock Text="Enter = preencher endereço"
-                                               FontSize="10" Foreground="{DynamicResource SecondaryTextBrush}"/>
-                                </StackPanel>
-                                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Text="IBGE"/><TextBox x:Name="TxtDestIbge" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                            </WrapPanel>
-
-                            <DockPanel Margin="0,10,0,8">
-                                <Button Content="📦 Produto do estoque..." DockPanel.Dock="Right"
-                                        Style="{StaticResource ToolbarButtonStyle}" Margin="10,0,0,0"
-                                        Click="BtnProdutoEstoque_Click"
-                                        ToolTip="Seleciona um produto com estoque e preenche os campos fiscais do cadastro."/>
-                                <TextBlock Text="Produto / Impostos (det)" FontWeight="Bold"
-                                           Foreground="{DynamicResource TitleBrush}" VerticalAlignment="Center"/>
-                            </DockPanel>
-                            <WrapPanel>
-                                <StackPanel Width="100" Margin="0,0,10,8"><TextBlock Text="Código"/><TextBox x:Name="TxtProdCod" Style="{StaticResource ModernTextBox}" Text="001"/></StackPanel>
-                                <StackPanel Width="280" Margin="0,0,10,8"><TextBlock Text="Descrição"/><TextBox x:Name="TxtProdDesc" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="110" Margin="0,0,10,8">
-                                    <TextBlock Text="NCM"/>
+                            <!-- 1. Identificação -->
+                            <Border Style="{StaticResource FormSectionCard}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                        <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="1" Style="{StaticResource FormStepText}"/></Border>
+                                        <TextBlock Text="Identificação da nota" Style="{StaticResource FormSectionTitle}"/>
+                                    </StackPanel>
                                     <Grid>
-                                        <TextBox x:Name="TxtProdNcm" Style="{StaticResource ModernTextBox}" TextChanged="TxtProdNcm_TextChanged"
-                                                 ToolTip="Digite 3+ caracteres (código ou palavra da descrição) para ver sugestões (BrasilAPI)."/>
-                                        <Popup x:Name="PopupNcm" PlacementTarget="{Binding ElementName=TxtProdNcm}" Placement="Bottom" StaysOpen="False" Width="340">
-                                            <Border Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                                                    BorderThickness="1" MaxHeight="220">
-                                                <ListBox x:Name="ListNcmSugestoes" BorderThickness="0" MaxHeight="218"
-                                                         PreviewMouseLeftButtonUp="ListNcmSugestoes_PreviewMouseLeftButtonUp"/>
-                                            </Border>
-                                        </Popup>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Natureza da operação *" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbNatOp" IsEditable="True" SelectedIndex="0"
+                                                      ToolTip="Texto livre enviado em natOp (máx. 60 caracteres). Não é CFOP — o CFOP fica em cada item.">
+                                                <ComboBoxItem Content="Venda de mercadoria"/>
+                                                <ComboBoxItem Content="Venda a consumidor final"/>
+                                                <ComboBoxItem Content="Prestação de serviço"/>
+                                                <ComboBoxItem Content="Devolução de mercadoria"/>
+                                                <ComboBoxItem Content="Remessa para demonstração"/>
+                                                <ComboBoxItem Content="Bonificação"/>
+                                            </ComboBox>
+                                            <TextBlock Text="Descrição da operação — o CFOP é informado em cada item" Style="{StaticResource FormHint}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="2" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Série / Número" Style="{StaticResource FormLabel}"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="56"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TxtSerie" Style="{StaticResource ModernTextBox}" Text="1"/>
+                                                <TextBox x:Name="TxtNumero" Grid.Column="2" Style="{StaticResource ModernTextBox}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Data de emissão" Style="{StaticResource FormLabel}"/>
+                                            <DatePicker x:Name="DpEmissao"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="4" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Ambiente" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbAmbiente" SelectedIndex="1" IsEnabled="False" SelectionChanged="CbAmbiente_SelectionChanged"
+                                                      ToolTip="Definido em Configurações → Fiscal / NF-e. Para mudar, altere lá — passa a valer em toda nota nova.">
+                                                <ComboBoxItem Content="1 — Produção" Tag="1"/>
+                                                <ComboBoxItem Content="2 — Homologação" Tag="2"/>
+                                            </ComboBox>
+                                            <TextBlock Text="Em Configurações → Fiscal" Style="{StaticResource FormHint}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Tipo" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbTipoOp" SelectedIndex="1">
+                                                <ComboBoxItem Content="0 — Entrada" Tag="0"/>
+                                                <ComboBoxItem Content="1 — Saída" Tag="1"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Finalidade" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbFinalidade" SelectedIndex="0">
+                                                <ComboBoxItem Content="1 — Normal" Tag="1"/>
+                                                <ComboBoxItem Content="2 — Complementar" Tag="2"/>
+                                                <ComboBoxItem Content="3 — Ajuste" Tag="3"/>
+                                                <ComboBoxItem Content="4 — Devolução" Tag="4"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="2" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Destino da operação" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbIdDest" SelectedIndex="0"
+                                                      ToolTip="Sugerido pelo CFOP do 1º item e pela UF do destinatário.">
+                                                <ComboBoxItem Content="1 — Interna" Tag="1"/>
+                                                <ComboBoxItem Content="2 — Interestadual" Tag="2"/>
+                                                <ComboBoxItem Content="3 — Exterior" Tag="3"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel x:Name="PanelIndFinal" Grid.Row="1" Grid.Column="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Consumidor final" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbIndFinal" SelectedIndex="1">
+                                                <ComboBoxItem Content="0 — Não" Tag="0"/>
+                                                <ComboBoxItem Content="1 — Sim" Tag="1"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel x:Name="PanelIndPres" Grid.Row="1" Grid.Column="4" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Presença do comprador" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbIndPres" SelectedIndex="1">
+                                                <ComboBoxItem Content="0 — Não se aplica" Tag="0"/>
+                                                <ComboBoxItem Content="1 — Presencial" Tag="1"/>
+                                                <ComboBoxItem Content="2 — Internet" Tag="2"/>
+                                                <ComboBoxItem Content="3 — Teleatendimento" Tag="3"/>
+                                                <ComboBoxItem Content="9 — Outros" Tag="9"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                    </Grid>
+                                    <Border x:Name="LblHomologHint" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1"
+                                            CornerRadius="6" Padding="10,7" Margin="0,0,12,10">
+                                        <TextBlock FontSize="11.5" Foreground="#92400E" TextWrapping="Wrap"
+                                                   Text="Homologação: o nome do destinatário e a descrição do 1º item são substituídos pelo texto padrão da SEFAZ ao gerar o XML/emitir. Os demais itens seguem como digitados."/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 2. Destinatário -->
+                            <Border Style="{StaticResource FormSectionCard}">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,14">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="2" Style="{StaticResource FormStepText}"/></Border>
+                                            <TextBlock Text="Destinatário" Style="{StaticResource FormSectionTitle}"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Cliente cadastrado" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbCliente" DisplayMemberPath="Nome" IsEditable="True" IsTextSearchEnabled="True"
+                                                      SelectionChanged="CbCliente_SelectionChanged"
+                                                      ToolTip="Digite para localizar — preenche todos os dados do destinatário"/>
+                                            <TextBlock Text="Opcional — preenche os campos abaixo" Style="{StaticResource FormHint}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Nome / Razão social *" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestNome" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="1" Grid.Column="0" Style="{StaticResource FormField}">
+                                            <TextBlock Text="CPF / CNPJ *" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestDoc" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+                                        <StackPanel x:Name="PanelIndIEDest" Grid.Row="1" Grid.Column="1" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Indicador de IE" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbIndIEDest" SelectedIndex="2" SelectionChanged="CbIndIEDest_SelectionChanged">
+                                                <ComboBoxItem Content="1 — Contribuinte" Tag="1"/>
+                                                <ComboBoxItem Content="2 — Isento" Tag="2"/>
+                                                <ComboBoxItem Content="9 — Não contribuinte" Tag="9"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel x:Name="PanelDestIe" Grid.Row="1" Grid.Column="2" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Inscrição estadual" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestIe" Style="{StaticResource ModernTextBox}" TextChanged="TxtDestIe_TextChanged"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="E-mail" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestEmail" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="2" Grid.Column="0" Style="{StaticResource FormField}">
+                                            <TextBlock Text="CEP" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestCep" Style="{StaticResource ModernTextBox}" KeyDown="TxtDestCep_KeyDown"
+                                                     ToolTip="Digite o CEP e pressione Enter para preencher endereço e IBGE (ViaCEP)."/>
+                                            <TextBlock Text="Enter preenche o endereço" Style="{StaticResource FormHint}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Logradouro" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestLgr" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="4" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Número" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestNro" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="5" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Bairro" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestBairro" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Município" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestMun" Style="{StaticResource ModernTextBox}"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="3" Style="{StaticResource FormField}">
+                                            <TextBlock Text="UF" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestUf" Style="{StaticResource ModernTextBox}" MaxLength="2"
+                                                     CharacterCasing="Upper" TextChanged="TxtDestUf_TextChanged"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="3" Grid.Column="4" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Código IBGE" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtDestIbge" Style="{StaticResource ModernTextBox}" MaxLength="7"/>
+                                        </StackPanel>
                                     </Grid>
                                 </StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="CEST"/><TextBox x:Name="TxtProdCest" Style="{StaticResource ModernTextBox}" ToolTip="Obrigatório em ICMS-ST"/></StackPanel>
-                                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Text="GTIN/EAN"/><TextBox x:Name="TxtProdGtin" Style="{StaticResource ModernTextBox}" Text="SEM GTIN"/></StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="CFOP"/><TextBox x:Name="TxtProdCfop" Style="{StaticResource ModernTextBox}" Text="5102" TextChanged="TxtProdCfop_TextChanged"/></StackPanel>
-                                <StackPanel Width="70" Margin="0,0,10,8"><TextBlock Text="Unid."/><TextBox x:Name="TxtProdUn" Style="{StaticResource ModernTextBox}" Text="UN"/></StackPanel>
-                                <StackPanel Width="80" Margin="0,0,10,8"><TextBlock Text="Qtd"/><TextBox x:Name="TxtProdQtd" Style="{StaticResource ModernTextBox}" Text="1" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Text="Vlr unit."/><TextBox x:Name="TxtProdVUnit" Style="{StaticResource ModernTextBox}" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Text="Vlr total"/><TextBox x:Name="TxtProdVTot" Style="{StaticResource ModernTextBox}" IsReadOnly="True"/></StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="Origem"/><ComboBox x:Name="CbIcmsOrigem" SelectedIndex="0"><ComboBoxItem Content="0-Nacional" Tag="0"/><ComboBoxItem Content="1-Estrangeira" Tag="1"/><ComboBoxItem Content="2-Estr. mercado" Tag="2"/></ComboBox></StackPanel>
-                                <StackPanel x:Name="PanelCst" Width="90" Margin="0,0,10,8"><TextBlock Text="CST ICMS"/><TextBox x:Name="TxtIcmsCst" Style="{StaticResource ModernTextBox}" Text="00"/></StackPanel>
-                                <StackPanel x:Name="PanelCsosn" Width="100" Margin="0,0,10,8"><TextBlock Text="CSOSN"/><ComboBox x:Name="CbCsosn" IsEditable="True" Text="102"><ComboBoxItem Content="101"/><ComboBoxItem Content="102"/><ComboBoxItem Content="103"/><ComboBoxItem Content="201"/><ComboBoxItem Content="202"/><ComboBoxItem Content="203"/><ComboBoxItem Content="300"/><ComboBoxItem Content="400"/><ComboBoxItem Content="500"/><ComboBoxItem Content="900"/></ComboBox></StackPanel>
-                                <StackPanel Width="80" Margin="0,0,10,8"><TextBlock Text="ICMS %"/><TextBox x:Name="TxtIcmsAliq" Style="{StaticResource ModernTextBox}" Text="0" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="80" Margin="0,0,10,8"><TextBlock Text="PIS CST"/><TextBox x:Name="TxtPisCst" Style="{StaticResource ModernTextBox}" Text="01"/></StackPanel>
-                                <StackPanel Width="80" Margin="0,0,10,8"><TextBlock Text="PIS %"/><TextBox x:Name="TxtPisAliq" Style="{StaticResource ModernTextBox}" Text="0" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="COFINS CST"/><TextBox x:Name="TxtCofinsCst" Style="{StaticResource ModernTextBox}" Text="01"/></StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="COFINS %"/><TextBox x:Name="TxtCofinsAliq" Style="{StaticResource ModernTextBox}" Text="0" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Text="Forma pag."/><ComboBox x:Name="CbFormaPag" SelectedIndex="0"><ComboBoxItem Content="01-Dinheiro" Tag="01"/><ComboBoxItem Content="03-Cartão crédito" Tag="03"/><ComboBoxItem Content="04-Cartão débito" Tag="04"/><ComboBoxItem Content="17-Pix" Tag="17"/><ComboBoxItem Content="15-Boleto" Tag="15"/></ComboBox></StackPanel>
-                                <StackPanel Width="400" Margin="0,0,10,8"><TextBlock Text="Informações complementares"/><TextBox x:Name="TxtInfCpl" Style="{StaticResource ModernTextBox}"/></StackPanel>
-                                <StackPanel Width="140" Margin="0,0,10,8"><TextBlock Text="Total da nota"/><TextBox x:Name="TxtTotalNf" Style="{StaticResource ModernTextBox}" IsReadOnly="True" FontWeight="Bold"/></StackPanel>
-                            </WrapPanel>
+                            </Border>
 
-                            <TextBlock Text="IBS / CBS (reforma tributária)" FontWeight="Bold" Foreground="{DynamicResource TitleBrush}" Margin="0,10,0,4"/>
-                            <TextBlock x:Name="LblNfIbsCbsInfo" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                            <WrapPanel>
-                                <StackPanel Width="100" Margin="0,0,10,8"><TextBlock Text="CST IBS/CBS"/><TextBox x:Name="TxtCstIbsCbs" Style="{StaticResource ModernTextBox}" Text="000"/></StackPanel>
-                                <StackPanel Width="120" Margin="0,0,10,8"><TextBlock Text="cClassTrib"/><TextBox x:Name="TxtClassTrib" Style="{StaticResource ModernTextBox}" Text="000001"/></StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="CBS %"/><TextBox x:Name="TxtCbsAliqNf" Style="{StaticResource ModernTextBox}" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="100" Margin="0,0,10,8"><TextBlock Text="CBS R$"/><TextBox x:Name="TxtCbsValor" Style="{StaticResource ModernTextBox}" IsReadOnly="True"/></StackPanel>
-                                <StackPanel Width="90" Margin="0,0,10,8"><TextBlock Text="IBS %"/><TextBox x:Name="TxtIbsAliqNf" Style="{StaticResource ModernTextBox}" TextChanged="CalcTotais"/></StackPanel>
-                                <StackPanel Width="100" Margin="0,0,10,8"><TextBlock Text="IBS R$"/><TextBox x:Name="TxtIbsValor" Style="{StaticResource ModernTextBox}" IsReadOnly="True"/></StackPanel>
-                                <StackPanel Width="100" Margin="0,0,10,8"><TextBlock Text="IBS UF R$"/><TextBox x:Name="TxtIbsUfValor" Style="{StaticResource ModernTextBox}" IsReadOnly="True"/></StackPanel>
-                                <StackPanel Width="110" Margin="0,0,10,8"><TextBlock Text="IBS Mun R$"/><TextBox x:Name="TxtIbsMunValor" Style="{StaticResource ModernTextBox}" IsReadOnly="True"/></StackPanel>
-                                <StackPanel Width="160" Margin="0,0,10,8" VerticalAlignment="Bottom">
-                                    <CheckBox x:Name="ChkAutoIbsCbs" Content="Cálculo automático" IsChecked="True" Click="ChkAutoIbsCbs_Click"/>
+                            <!-- 3. Itens -->
+                            <Border Style="{StaticResource FormSectionCard}" Padding="18,14,18,14">
+                                <StackPanel>
+                                    <DockPanel Margin="0,0,0,12">
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Content="📦  Do estoque" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                                    Click="BtnItemDoEstoque_Click"
+                                                    ToolTip="Escolhe um produto do Estoque e já abre o item preenchido para informar a quantidade."/>
+                                            <Button Content="＋  Adicionar item" Style="{StaticResource AccentButtonStyle}"
+                                                    Click="BtnAdicionarItem_Click"
+                                                    ToolTip="Abre o editor de item — Enter salva e já abre o próximo."/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="3" Style="{StaticResource FormStepText}"/></Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="Itens da nota" Style="{StaticResource FormSectionTitle}"/>
+                                                <TextBlock x:Name="LblItensContagem" Text="Nenhum item" Style="{StaticResource FormSectionSubtitle}" Margin="0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <Grid>
+                                        <DataGrid x:Name="GridItens" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                                                  CanUserAddRows="False" CanUserResizeRows="False" CanUserReorderColumns="False"
+                                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="36"
+                                                  HorizontalGridLinesBrush="#EEF2F7" BorderBrush="{StaticResource FormCardBorderBrush}"
+                                                  BorderThickness="1" Background="White" RowBackground="White"
+                                                  AlternatingRowBackground="#FAFBFD" MinHeight="150" MaxHeight="340"
+                                                  VerticalScrollBarVisibility="Auto" MouseDoubleClick="GridItens_MouseDoubleClick"
+                                                  KeyDown="GridItens_KeyDown">
+                                            <DataGrid.ColumnHeaderStyle>
+                                                <Style TargetType="DataGridColumnHeader">
+                                                    <Setter Property="Background" Value="#F8FAFC"/>
+                                                    <Setter Property="Foreground" Value="#64748B"/>
+                                                    <Setter Property="FontSize" Value="11"/>
+                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    <Setter Property="Padding" Value="10,8"/>
+                                                    <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                                </Style>
+                                            </DataGrid.ColumnHeaderStyle>
+                                            <DataGrid.CellStyle>
+                                                <Style TargetType="DataGridCell">
+                                                    <Setter Property="BorderThickness" Value="0"/>
+                                                    <Setter Property="Padding" Value="10,0"/>
+                                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="DataGridCell">
+                                                                <Border Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+                                                                    <ContentPresenter VerticalAlignment="Center"/>
+                                                                </Border>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter Property="Background" Value="#EFF6FF"/>
+                                                            <Setter Property="Foreground" Value="#0F172A"/>
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </DataGrid.CellStyle>
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="#" Binding="{Binding Posicao}" Width="44">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock"><Setter Property="Foreground" Value="#94A3B8"/></Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="CÓDIGO" Binding="{Binding Codigo}" Width="90"/>
+                                                <DataGridTextColumn Header="DESCRIÇÃO" Binding="{Binding Descricao}" Width="*" MinWidth="220">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                            <Setter Property="Foreground" Value="#1E293B"/>
+                                                            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="NCM" Binding="{Binding Ncm}" Width="86"/>
+                                                <DataGridTextColumn Header="CFOP" Binding="{Binding Cfop}" Width="60"/>
+                                                <DataGridTextColumn Header="QTD" Binding="{Binding QuantidadeFormatada}" Width="64">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Right"/></Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="UN" Binding="{Binding Unidade}" Width="50"/>
+                                                <DataGridTextColumn Header="VALOR UNIT." Binding="{Binding ValorUnitarioFormatado}" Width="104">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock"><Setter Property="HorizontalAlignment" Value="Right"/></Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTextColumn Header="TOTAL" Binding="{Binding ValorTotalFormatado}" Width="112">
+                                                    <DataGridTextColumn.ElementStyle>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                            <Setter Property="Foreground" Value="#0F172A"/>
+                                                        </Style>
+                                                    </DataGridTextColumn.ElementStyle>
+                                                </DataGridTextColumn>
+                                                <DataGridTemplateColumn Header="" Width="104">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                                <Button Content="✏️" Style="{StaticResource RowIconButtonStyle}" ToolTip="Editar item"
+                                                                        Click="BtnLinhaEditar_Click"/>
+                                                                <Button Content="⧉" Style="{StaticResource RowIconButtonStyle}" ToolTip="Duplicar item"
+                                                                        FontSize="14" Foreground="#475569" Click="BtnLinhaDuplicar_Click"/>
+                                                                <Button Content="🗑" Style="{StaticResource RowIconButtonStyle}" ToolTip="Remover item"
+                                                                        Foreground="#DC2626" Click="BtnLinhaRemover_Click"/>
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+
+                                        <!-- Estado vazio -->
+                                        <StackPanel x:Name="PainelItensVazio" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                    Margin="0,36,0,0" IsHitTestVisible="False">
+                                            <TextBlock Text="📦" FontSize="28" HorizontalAlignment="Center" Opacity="0.55"/>
+                                            <TextBlock Text="Nenhum item adicionado" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="#64748B" HorizontalAlignment="Center" Margin="0,6,0,2"/>
+                                            <TextBlock Text="Use “Adicionar item” ou “Do estoque”. Você pode lançar quantos precisar."
+                                                       FontSize="11.5" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource FormHint}" Margin="0,8,0,0"
+                                               Text="Duplo clique edita · Delete remove o item selecionado"/>
                                 </StackPanel>
-                            </WrapPanel>
+                            </Border>
+
+                            <!-- 4. Pagamento e observações -->
+                            <Border Style="{StaticResource FormSectionCard}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                        <Border Style="{StaticResource FormStepBadge}"><TextBlock Text="4" Style="{StaticResource FormStepText}"/></Border>
+                                        <TextBlock Text="Pagamento e informações adicionais" Style="{StaticResource FormSectionTitle}"/>
+                                    </StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/><ColumnDefinition Width="3*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Forma de pagamento" Style="{StaticResource FormLabel}"/>
+                                            <ComboBox x:Name="CbFormaPag" SelectedIndex="0">
+                                                <ComboBoxItem Content="01 — Dinheiro" Tag="01"/>
+                                                <ComboBoxItem Content="03 — Cartão de crédito" Tag="03"/>
+                                                <ComboBoxItem Content="04 — Cartão de débito" Tag="04"/>
+                                                <ComboBoxItem Content="17 — Pix" Tag="17"/>
+                                                <ComboBoxItem Content="15 — Boleto" Tag="15"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Style="{StaticResource FormField}">
+                                            <TextBlock Text="Informações complementares" Style="{StaticResource FormLabel}"/>
+                                            <TextBox x:Name="TxtInfCpl" Style="{StaticResource ModernTextBox}" MaxLength="2000"/>
+                                            <TextBlock Text="Saem no campo de dados adicionais da DANFE" Style="{StaticResource FormHint}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-                        <Button x:Name="BtnExcluirForm" Content="🗑️ EXCLUIR" Background="{DynamicResource ActionDelBg}" Foreground="{DynamicResource ActionDelFg}"
-                                BorderThickness="0" Margin="0,0,8,0" Padding="12,6" Click="BtnExcluirForm_Click" Visibility="Collapsed"/>
-                        <Button Content="Cancelar" Margin="0,0,8,0" Padding="12,6" Click="BtnFecharForm_Click"
-                                Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"/>
-                        <Button Content="💾 SALVAR" Style="{StaticResource HoverButtonStyle}" Click="BtnSalvar_Click" Width="120"/>
-                    </StackPanel>
+                    <!-- Rodapé: totais + ações -->
+                    <Border Grid.Row="2" Background="{DynamicResource CardBackgroundBrush}" Padding="26,14"
+                            CornerRadius="0,0,10,10" BorderBrush="{StaticResource FormCardBorderBrush}" BorderThickness="0,1,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <WrapPanel Grid.Column="0" VerticalAlignment="Center">
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock Text="ITENS" Style="{StaticResource TotalLabel}"/>
+                                    <TextBlock x:Name="LblTotItens" Text="0" Style="{StaticResource TotalValue}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock Text="PRODUTOS" Style="{StaticResource TotalLabel}"/>
+                                    <TextBlock x:Name="LblTotProdutos" Text="R$ 0,00" Style="{StaticResource TotalValue}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock x:Name="LblTotIcmsRotulo" Text="ICMS" Style="{StaticResource TotalLabel}"/>
+                                    <TextBlock x:Name="LblTotIcms" Text="R$ 0,00" Style="{StaticResource TotalValue}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock Text="PIS / COFINS" Style="{StaticResource TotalLabel}"/>
+                                    <TextBlock x:Name="LblTotPisCofins" Text="R$ 0,00" Style="{StaticResource TotalValue}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,26,0">
+                                    <TextBlock Text="IBS / CBS" Style="{StaticResource TotalLabel}"/>
+                                    <TextBlock x:Name="LblTotIbsCbs" Text="R$ 0,00" Style="{StaticResource TotalValue}"/>
+                                </StackPanel>
+                                <Border BorderBrush="{StaticResource FormCardBorderBrush}" BorderThickness="1,0,0,0" Padding="22,0,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="TOTAL DA NOTA" Style="{StaticResource TotalLabel}"/>
+                                        <TextBlock x:Name="LblTotNota" Text="R$ 0,00" FontSize="21" FontWeight="Bold"
+                                                   Foreground="{DynamicResource TitleBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </WrapPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="BtnExcluirForm" Content="🗑  Excluir" Style="{StaticResource DangerButtonStyle}"
+                                        Margin="0,0,16,0" Click="BtnExcluirForm_Click" Visibility="Collapsed"/>
+                                <Button Content="Cancelar" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0"
+                                        Click="BtnFecharForm_Click"/>
+                                <Button Content="💾  Salvar nota" Style="{StaticResource PrimaryButtonStyle}" Click="BtnSalvar_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>

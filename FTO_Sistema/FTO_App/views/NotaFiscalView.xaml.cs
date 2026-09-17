@@ -2,15 +2,15 @@ using FTO_App.Models;
 using FTO_App.Services;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Npgsql;
 using System.Data;
 using System.Globalization;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace FTO_App.Views
 {
@@ -26,31 +26,38 @@ namespace FTO_App.Views
         private int _totalPages = 1;
         private bool _buscandoCep;
 
+        /// <summary>Itens da nota em edição — a grade do formulário é ligada direto nesta coleção.</summary>
+        private readonly ObservableCollection<NotaFiscalItemModel> _itens = new();
+
         public NotaFiscalView()
         {
             InitializeComponent();
             DpEmissao.SelectedDate = DateTime.Today;
+            GridItens.ItemsSource = _itens;
             Loaded += (_, _) =>
             {
                 LoadClientes();
-                AtualizarPainelIcmsPorCrt();
                 AtualizarHintHomolog();
+                AtualizarResumoItens();
                 LoadGrid();
             };
         }
 
-        private void AtualizarPainelIcmsPorCrt()
-        {
-            bool regimeNormal = EmpresaConfigStore.Current.RegimeTributario == "3";
-            if (PanelCst != null) PanelCst.Visibility = regimeNormal ? Visibility.Visible : Visibility.Collapsed;
-            if (PanelCsosn != null) PanelCsosn.Visibility = regimeNormal ? Visibility.Collapsed : Visibility.Visible;
-        }
+        private static bool RegimeNormal => EmpresaConfigStore.Current.RegimeTributario == "3";
 
         private void AtualizarHintHomolog()
         {
             if (LblHomologHint == null || CbAmbiente == null) return;
-            string? amb = (CbAmbiente.SelectedItem as ComboBoxItem)?.Tag?.ToString();
-            LblHomologHint.Visibility = amb == "2" ? Visibility.Visible : Visibility.Collapsed;
+            bool homolog = (CbAmbiente.SelectedItem as ComboBoxItem)?.Tag?.ToString() == "2";
+
+            LblHomologHint.Visibility = homolog ? Visibility.Visible : Visibility.Collapsed;
+            LblBadgeAmbiente.Text = homolog ? "HOMOLOGAÇÃO" : "PRODUÇÃO";
+            BadgeAmbiente.Background = new SolidColorBrush(homolog
+                ? Color.FromRgb(0xFE, 0xF3, 0xC7)
+                : Color.FromRgb(0xDC, 0xFC, 0xE7));
+            LblBadgeAmbiente.Foreground = new SolidColorBrush(homolog
+                ? Color.FromRgb(0xB4, 0x53, 0x09)
+                : Color.FromRgb(0x15, 0x80, 0x3D));
         }
 
         private void CbAmbiente_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -83,14 +90,14 @@ namespace FTO_App.Views
                 SetComboTag(CbIndIEDest, "1");
         }
 
-        private void TxtProdCfop_TextChanged(object sender, TextChangedEventArgs e) => SugerirIdDest();
         private void TxtDestUf_TextChanged(object sender, TextChangedEventArgs e) => SugerirIdDest();
 
+        /// <summary>idDest segue o CFOP do 1º item (5xxx/6xxx/7xxx) e a UF do destinatário.</summary>
         private void SugerirIdDest()
         {
             if (CbIdDest == null || !IsLoaded) return;
             string id = NfeXmlService.InferirIdDest(
-                TxtProdCfop?.Text,
+                _itens.FirstOrDefault()?.Cfop,
                 EmpresaConfigStore.Current.Uf,
                 TxtDestUf?.Text);
             SetComboTag(CbIdDest, id);
@@ -134,21 +141,21 @@ namespace FTO_App.Views
                 MessageBox.Show("Selecione uma nota na lista.", "NF-e", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            AbrirEdicao(n);
+        }
+
+        private void Grid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (GridNotas.SelectedItem is NotaFiscalModel n)
+                AbrirEdicao(n);
+        }
+
+        private void AbrirEdicao(NotaFiscalModel n)
+        {
             CarregarNotaNoForm(n);
             AtualizarTituloForm();
             if (BtnExcluirForm != null) BtnExcluirForm.Visibility = Visibility.Visible;
             FormOverlay.Visibility = Visibility.Visible;
-        }
-
-        private void Grid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-            if (GridNotas.SelectedItem is NotaFiscalModel n)
-            {
-                CarregarNotaNoForm(n);
-                AtualizarTituloForm();
-                if (BtnExcluirForm != null) BtnExcluirForm.Visibility = Visibility.Visible;
-                FormOverlay.Visibility = Visibility.Visible;
-            }
         }
 
         /// <summary>Abre a janela de emissão/consulta/cancelamento/CC-e/DANFE para a
@@ -217,6 +224,12 @@ namespace FTO_App.Views
 
         private void BtnFecharForm_Click(object sender, RoutedEventArgs e)
         {
+            // Fechar com itens lançados perde o trabalho — confirma antes.
+            if (_itens.Count > 0 && !_editingId.HasValue &&
+                MessageBox.Show($"Descartar esta nota com {_itens.Count} item(ns) lançado(s)?",
+                    "NF-e", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
             FormOverlay.Visibility = Visibility.Collapsed;
             BtnLimpar_Click(sender, e);
         }
@@ -392,110 +405,206 @@ namespace FTO_App.Views
         }
 
         // -----------------------------------------------------------------
-        // Autocomplete de NCM (BrasilAPI) — debounce de ~350ms, mínimo 3
-        // caracteres; falha de rede não bloqueia (usuário digita manualmente).
+        // Itens da nota
         // -----------------------------------------------------------------
 
-        private CancellationTokenSource? _ncmCts;
-        private bool _suprimirBuscaNcm;
+        private Window? Dono => Window.GetWindow(this);
 
-        private async void TxtProdNcm_TextChanged(object sender, TextChangedEventArgs e)
+        private void BtnAdicionarItem_Click(object sender, RoutedEventArgs e)
         {
-            if (_suprimirBuscaNcm || !IsLoaded) return;
-
-            _ncmCts?.Cancel();
-            var cts = new CancellationTokenSource();
-            _ncmCts = cts;
-            string termo = TxtProdNcm.Text;
-
-            try
-            {
-                await Task.Delay(350, cts.Token);
-            }
-            catch (TaskCanceledException)
-            {
-                return;
-            }
-            if (cts.IsCancellationRequested) return;
-
-            var sugestoes = await NcmService.BuscarAsync(termo);
-            if (cts.IsCancellationRequested) return;
-
-            if (sugestoes.Count == 0)
-            {
-                PopupNcm.IsOpen = false;
-                return;
-            }
-            ListNcmSugestoes.ItemsSource = sugestoes;
-            PopupNcm.IsOpen = true;
+            var win = NovaJanelaAdicionar();
+            FinalizarJanelaAdicionar(win, win.ShowDialog());
         }
 
-        private void ListNcmSugestoes_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void BtnItemDoEstoque_Click(object sender, RoutedEventArgs e)
         {
-            if (ListNcmSugestoes.SelectedItem is NcmResult ncm)
-            {
-                _suprimirBuscaNcm = true;
-                // Guarda só os dígitos (BrasilAPI devolve com pontos: "2203.00.00")
-                TxtProdNcm.Text = ReformaTributariaService.NormalizarNcm(ncm.Codigo);
-                TxtProdNcm.CaretIndex = TxtProdNcm.Text.Length;
-                _suprimirBuscaNcm = false;
-            }
-            PopupNcm.IsOpen = false;
+            var win = NovaJanelaAdicionar();
+            if (!win.EscolherDoEstoque()) return;
+            FinalizarJanelaAdicionar(win, win.ShowDialog());
         }
 
-        private void CalcTotais(object sender, TextChangedEventArgs e) => RecalcTotais();
-        private void ChkAutoIbsCbs_Click(object sender, RoutedEventArgs e) => RecalcTotais();
-
-        private void RecalcTotais()
-        {
-            decimal qtd = ParseDec(TxtProdQtd?.Text);
-            decimal unit = ParseDec(TxtProdVUnit?.Text);
-            decimal total = qtd * unit;
-            if (TxtProdVTot != null) TxtProdVTot.Text = total.ToString("N2", PtBr);
-            if (TxtTotalNf != null) TxtTotalNf.Text = total.ToString("C2", PtBr);
-
-            if (TxtCbsValor == null) return;
-
-            var cfg = EmpresaConfigStore.Current;
-            if (LblNfIbsCbsInfo != null)
-                LblNfIbsCbsInfo.Text = ReformaTributariaService.DescricaoPreset(cfg.IbsCbsPreset);
-
-            bool auto = ChkAutoIbsCbs?.IsChecked != false && cfg.IbsCbsCalculoAutomatico;
-            if (auto)
+        /// <summary>
+        /// Cada "Salvar e adicionar outro" já entra na grade na hora (callback); o item-modelo é o
+        /// último da nota, para herdar CFOP, unidade e tributação.
+        /// </summary>
+        private NotaFiscalItemWindow NovaJanelaAdicionar() =>
+            new(item: null,
+                numeroItem: _itens.Count + 1,
+                aoAdicionarEmSequencia: AdicionarItem,
+                modelo: _itens.LastOrDefault())
             {
-                var r = ReformaTributariaService.Calcular(total, cfg);
-                TxtCbsAliqNf.Text = r.AliquotaCbs.ToString("0.####", PtBr);
-                TxtIbsAliqNf.Text = r.AliquotaIbs.ToString("0.####", PtBr);
-                TxtCbsValor.Text = r.ValorCbs.ToString("N2", PtBr);
-                TxtIbsValor.Text = r.ValorIbs.ToString("N2", PtBr);
-                TxtIbsUfValor.Text = r.ValorIbsUf.ToString("N2", PtBr);
-                TxtIbsMunValor.Text = r.ValorIbsMun.ToString("N2", PtBr);
-                if (string.IsNullOrWhiteSpace(TxtCstIbsCbs.Text)) TxtCstIbsCbs.Text = r.Cst;
-                if (string.IsNullOrWhiteSpace(TxtClassTrib.Text)) TxtClassTrib.Text = r.ClassTrib;
+                Owner = Dono
+            };
+
+        private void FinalizarJanelaAdicionar(NotaFiscalItemWindow win, bool? resultado)
+        {
+            if (resultado == true && win.Resultado != null)
+                AdicionarItem(win.Resultado);
+        }
+
+        private void AdicionarItem(NotaFiscalItemModel item)
+        {
+            bool primeiro = _itens.Count == 0;
+            _itens.Add(item);
+            AtualizarResumoItens();
+            GridItens.SelectedItem = item;
+            GridItens.ScrollIntoView(item);
+            if (primeiro) SugerirIdDest();
+        }
+
+        private void EditarItem(NotaFiscalItemModel item)
+        {
+            int idx = _itens.IndexOf(item);
+            if (idx < 0) return;
+
+            var win = new NotaFiscalItemWindow(item, idx + 1) { Owner = Dono };
+            if (win.ShowDialog() != true || win.Resultado == null) return;
+
+            _itens[idx] = win.Resultado;
+            AtualizarResumoItens();
+            GridItens.SelectedItem = win.Resultado;
+            if (idx == 0) SugerirIdDest();
+        }
+
+        private void DuplicarItem(NotaFiscalItemModel item)
+        {
+            int idx = _itens.IndexOf(item);
+            if (idx < 0) return;
+
+            var copia = item.Clonar();
+            _itens.Insert(idx + 1, copia);
+            AtualizarResumoItens();
+            GridItens.SelectedItem = copia;
+            GridItens.ScrollIntoView(copia);
+        }
+
+        private void RemoverItem(NotaFiscalItemModel item)
+        {
+            if (MessageBox.Show($"Remover o item \"{item.Descricao}\" da nota?", "Remover item",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            int idx = _itens.IndexOf(item);
+            _itens.Remove(item);
+            AtualizarResumoItens();
+            if (idx == 0) SugerirIdDest();
+        }
+
+        private static NotaFiscalItemModel? ItemDaLinha(object sender) =>
+            (sender as FrameworkElement)?.DataContext as NotaFiscalItemModel;
+
+        private void BtnLinhaEditar_Click(object sender, RoutedEventArgs e)
+        {
+            if (ItemDaLinha(sender) is { } item) EditarItem(item);
+        }
+
+        private void BtnLinhaDuplicar_Click(object sender, RoutedEventArgs e)
+        {
+            if (ItemDaLinha(sender) is { } item) DuplicarItem(item);
+        }
+
+        private void BtnLinhaRemover_Click(object sender, RoutedEventArgs e)
+        {
+            if (ItemDaLinha(sender) is { } item) RemoverItem(item);
+        }
+
+        private void GridItens_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            // Duplo clique no cabeçalho ou na área vazia não é edição.
+            if (e.OriginalSource is DependencyObject d && ItemsControl.ContainerFromElement(GridItens, d) is DataGridRow row &&
+                row.Item is NotaFiscalItemModel item)
+                EditarItem(item);
+        }
+
+        private void GridItens_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete && GridItens.SelectedItem is NotaFiscalItemModel item)
+            {
+                e.Handled = true;
+                RemoverItem(item);
+            }
+            else if (e.Key == Key.Enter && GridItens.SelectedItem is NotaFiscalItemModel sel)
+            {
+                e.Handled = true;
+                EditarItem(sel);
+            }
+        }
+
+        /// <summary>Renumera, atualiza estado vazio, contagem e rodapé de totais.</summary>
+        private void AtualizarResumoItens()
+        {
+            for (int i = 0; i < _itens.Count; i++)
+                _itens[i].Posicao = i + 1;
+            GridItens.Items.Refresh();
+
+            int qtd = _itens.Count;
+            PainelItensVazio.Visibility = qtd == 0 ? Visibility.Visible : Visibility.Collapsed;
+            LblItensContagem.Text = qtd switch
+            {
+                0 => "Nenhum item — a nota precisa de pelo menos um",
+                1 => "1 item",
+                _ => $"{qtd} itens"
+            };
+
+            decimal produtos = _itens.Sum(i => i.ValorTotal);
+            decimal icms;
+            if (RegimeNormal)
+            {
+                LblTotIcmsRotulo.Text = "ICMS";
+                icms = _itens.Where(i => !FiscalPayloadBuilder.IcmsSemBase(i.IcmsCst?.Trim() ?? "")).Sum(i => i.IcmsValor);
             }
             else
             {
-                decimal cbsA = ParseDec(TxtCbsAliqNf?.Text);
-                decimal ibsA = ParseDec(TxtIbsAliqNf?.Text);
-                var (_, _, ufA, munA) = ReformaTributariaService.AliquotasDoPreset(cfg.IbsCbsPreset, cfg);
-                // Mantém rateio UF/Mun do preset quando o usuário só altera o total IBS
-                decimal fatorUf = ibsA > 0 && (ufA + munA) > 0 ? ufA / (ufA + munA) : 0.5m;
-                TxtCbsValor.Text = Math.Round(total * cbsA / 100m, 2).ToString("N2", PtBr);
-                decimal ibsV = Math.Round(total * ibsA / 100m, 2);
-                TxtIbsValor.Text = ibsV.ToString("N2", PtBr);
-                decimal ufV = Math.Round(ibsV * fatorUf, 2);
-                TxtIbsUfValor.Text = ufV.ToString("N2", PtBr);
-                TxtIbsMunValor.Text = (ibsV - ufV).ToString("N2", PtBr);
+                LblTotIcmsRotulo.Text = "CRÉDITO ICMS (SN)";
+                icms = _itens.Where(i => (i.Csosn ?? "").Trim() == "101").Sum(i => i.IcmsValor);
             }
+
+            decimal pisCofins = _itens.Sum(i =>
+                (FiscalPayloadBuilder.PisCofinsNaoTributado((i.PisCst ?? "").Trim()) ? 0 : i.PisValor) +
+                (FiscalPayloadBuilder.PisCofinsNaoTributado((i.CofinsCst ?? "").Trim()) ? 0 : i.CofinsValor));
+
+            LblTotItens.Text = qtd.ToString(PtBr);
+            LblTotProdutos.Text = produtos.ToString("C2", PtBr);
+            LblTotIcms.Text = icms.ToString("C2", PtBr);
+            LblTotPisCofins.Text = pisCofins.ToString("C2", PtBr);
+            LblTotIbsCbs.Text = _itens.Sum(i => i.IbsValor + i.CbsValor).ToString("C2", PtBr);
+            LblTotNota.Text = produtos.ToString("C2", PtBr);
         }
+
+        // -----------------------------------------------------------------
+        // Salvar
+        // -----------------------------------------------------------------
 
         private void BtnSalvar_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrWhiteSpace(TxtDestNome.Text))
+            {
+                MessageBox.Show("Informe o destinatário da nota.", "NF-e", MessageBoxButton.OK, MessageBoxImage.Warning);
+                TxtDestNome.Focus();
+                return;
+            }
+
+            if (_itens.Count == 0)
+            {
+                MessageBox.Show("Adicione pelo menos um item à nota.", "NF-e", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Itens vindos de nota antiga podem estar incompletos — deixa salvar como rascunho,
+            // mas avisa: a emissão vai recusar do mesmo jeito.
+            var problemas = NotaFiscalValidacao.ValidarItens(_itens.ToList());
+            if (problemas.Count > 0 &&
+                MessageBox.Show("Há itens incompletos:\n\n• " + string.Join("\n• ", problemas) +
+                                "\n\nSalvar mesmo assim como rascunho? A emissão só será liberada depois de corrigir.",
+                    "NF-e", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+
             try
             {
                 var nota = MontarNota();
                 SalvarNoBanco(nota);
-                MessageBox.Show("Nota salva!", "NF-e", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"Nota salva com {nota.Itens.Count} item(ns) — total {nota.ValorTotalNota.ToString("C2", PtBr)}.",
+                    "NF-e", MessageBoxButton.OK, MessageBoxImage.Information);
                 FormOverlay.Visibility = Visibility.Collapsed;
                 BtnLimpar_Click(sender, e);
                 LoadGrid();
@@ -552,11 +661,12 @@ namespace FTO_App.Views
         // NotaFiscalAcoesWindow, aberta pelo botão "⚡ Ações fiscais").
         // -----------------------------------------------------------------
 
-        /// <summary>Título do modal reflete se é lançamento novo ou edição.</summary>
+        /// <summary>Título e subtítulo do modal refletem se é lançamento novo ou edição.</summary>
         private void AtualizarTituloForm()
         {
             if (LblFormTitulo == null) return;
-            LblFormTitulo.Text = _editingId.HasValue ? "Editar NF-e" : "Cadastrar NF-e";
+            LblFormTitulo.Text = _editingId.HasValue ? "Editar NF-e" : "Nova NF-e";
+            LblFormSubtitulo.Text = $"Modelo 55 · Série {TxtSerie.Text} · Nº {TxtNumero.Text}";
         }
 
         private string NaturezaOperacaoAtual()
@@ -605,128 +715,26 @@ namespace FTO_App.Views
         {
             _editingId = null;
             CbCliente.SelectedItem = null;
+            CbCliente.Text = "";
             TxtDestNome.Text = TxtDestDoc.Text = TxtDestIe.Text = TxtDestEmail.Text = "";
             TxtDestLgr.Text = TxtDestNro.Text = TxtDestBairro.Text = TxtDestMun.Text = "";
             TxtDestUf.Text = TxtDestCep.Text = TxtDestIbge.Text = "";
-            _suprimirBuscaNcm = true;
-            TxtProdDesc.Text = TxtProdNcm.Text = TxtProdCest.Text = "";
-            _suprimirBuscaNcm = false;
-            TxtProdGtin.Text = "SEM GTIN";
-            TxtProdCod.Text = "001";
-            TxtProdCfop.Text = "5102";
-            TxtProdUn.Text = "UN";
-            TxtProdQtd.Text = "1";
-            TxtProdVUnit.Text = "";
-            TxtIcmsCst.Text = "00";
-            CbCsosn.Text = "102";
-            SetComboTag(CbIcmsOrigem, "0");
             SetComboTag(CbIndIEDest, "9");
             SetComboTag(CbIdDest, "1");
             SetComboTag(CbIndFinal, "1");
             SetComboTag(CbIndPres, "1");
-            TxtIcmsAliq.Text = TxtPisAliq.Text = TxtCofinsAliq.Text = "0";
-            TxtPisCst.Text = TxtCofinsCst.Text = "01";
+            SetComboTag(CbTipoOp, "1");
+            SetComboTag(CbFinalidade, "1");
+            SetComboTag(CbFormaPag, "01");
+            DpEmissao.SelectedDate = DateTime.Today;
             TxtInfCpl.Text = "";
             CbNatOp.Text = "Venda de mercadoria";
-            TxtCstIbsCbs.Text = ReformaTributariaService.CstPadrao;
-            TxtClassTrib.Text = ReformaTributariaService.ClassTribPadrao;
-            ChkAutoIbsCbs.IsChecked = EmpresaConfigStore.Current.IbsCbsCalculoAutomatico;
+            _itens.Clear();
             if (BtnExcluirForm != null) BtnExcluirForm.Visibility = Visibility.Collapsed;
-            AtualizarPainelIcmsPorCrt();
+            SugerirProximoNumero();
             AtualizarHintHomolog();
             AtualizarTituloForm();
-            SugerirProximoNumero();
-            RecalcTotais();
-        }
-
-        private void BtnProdutoEstoque_Click(object sender, RoutedEventArgs e)
-        {
-            var win = new ProdutoEstoquePickerWindow { Owner = Window.GetWindow(this) };
-            if (win.ShowDialog() != true || win.ProdutoSelecionado is null) return;
-            AplicarProdutoDoEstoque(win.ProdutoSelecionado);
-        }
-
-        /// <summary>
-        /// Preenche os campos do item com o cadastro do estoque, após validar dados fiscais mínimos.
-        /// </summary>
-        private void AplicarProdutoDoEstoque(ProdutoModel p)
-        {
-            var faltando = new List<string>();
-            if (string.IsNullOrWhiteSpace(p.Nome) && string.IsNullOrWhiteSpace(p.Descricao))
-                faltando.Add("nome/descrição");
-            if (string.IsNullOrWhiteSpace(p.Ncm) || DocumentValidator.OnlyDigits(p.Ncm).Length != 8)
-                faltando.Add("NCM (8 dígitos)");
-            if (string.IsNullOrWhiteSpace(p.Cfop) || DocumentValidator.OnlyDigits(p.Cfop).Length != 4)
-                faltando.Add("CFOP (4 dígitos)");
-            if (p.PrecoVenda <= 0)
-                faltando.Add("preço de venda");
-            if (p.Quantidade <= 0)
-                faltando.Add("quantidade em estoque");
-
-            bool regimeNormal = EmpresaConfigStore.Current.RegimeTributario == "3";
-            if (regimeNormal)
-            {
-                if (string.IsNullOrWhiteSpace(p.CstIcms))
-                    faltando.Add("CST ICMS");
-            }
-            else if (string.IsNullOrWhiteSpace(p.Csosn))
-            {
-                faltando.Add("CSOSN");
-            }
-
-            if (faltando.Count > 0)
-            {
-                MessageBox.Show(
-                    "O produto do estoque está incompleto para emitir nota. Complete no módulo Estoque:\n\n• " +
-                    string.Join("\n• ", faltando),
-                    "Produto incompleto", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
-            if (!string.IsNullOrWhiteSpace(p.CodigoBarras))
-                TxtProdCod.Text = p.CodigoBarras.Trim();
-            else if (p.Id > 0)
-                TxtProdCod.Text = p.Id.ToString(PtBr);
-
-            string desc = !string.IsNullOrWhiteSpace(p.Descricao) ? p.Descricao.Trim() : p.Nome.Trim();
-            _suprimirBuscaNcm = true;
-            TxtProdDesc.Text = desc;
-            TxtProdNcm.Text = DocumentValidator.OnlyDigits(p.Ncm);
-            _suprimirBuscaNcm = false;
-
-            TxtProdCest.Text = (p.Cest ?? "").Trim();
-            if (!string.IsNullOrWhiteSpace(p.CodigoBarras) && p.CodigoBarras.Trim().Length is >= 8 and <= 14)
-                TxtProdGtin.Text = p.CodigoBarras.Trim();
-            else
-                TxtProdGtin.Text = "SEM GTIN";
-
-            TxtProdCfop.Text = DocumentValidator.OnlyDigits(p.Cfop);
-            TxtProdUn.Text = string.IsNullOrWhiteSpace(p.Unidade) ? "UN" : p.Unidade.Trim();
-            TxtProdQtd.Text = "1";
-            TxtProdVUnit.Text = p.PrecoVenda.ToString("N4", PtBr);
-
-            SetComboTag(CbIcmsOrigem, string.IsNullOrWhiteSpace(p.Origem) ? "0" : p.Origem.Trim());
-            if (!string.IsNullOrWhiteSpace(p.CstIcms)) TxtIcmsCst.Text = p.CstIcms.Trim();
-            if (!string.IsNullOrWhiteSpace(p.Csosn)) CbCsosn.Text = p.Csosn.Trim();
-            TxtIcmsAliq.Text = p.IcmsAliquota.ToString("N2", PtBr);
-
-            if (!string.IsNullOrWhiteSpace(p.PisCst)) TxtPisCst.Text = p.PisCst.Trim();
-            TxtPisAliq.Text = p.PisAliquota.ToString("N2", PtBr);
-            if (!string.IsNullOrWhiteSpace(p.CofinsCst)) TxtCofinsCst.Text = p.CofinsCst.Trim();
-            TxtCofinsAliq.Text = p.CofinsAliquota.ToString("N2", PtBr);
-
-            if (!string.IsNullOrWhiteSpace(p.CstIbsCbs)) TxtCstIbsCbs.Text = p.CstIbsCbs.Trim();
-            if (!string.IsNullOrWhiteSpace(p.ClassTrib)) TxtClassTrib.Text = p.ClassTrib.Trim();
-            if (p.CbsAliquota > 0) TxtCbsAliqNf.Text = p.CbsAliquota.ToString("N4", PtBr);
-            if (p.IbsAliquota > 0) TxtIbsAliqNf.Text = p.IbsAliquota.ToString("N4", PtBr);
-
-            if (!string.IsNullOrWhiteSpace(p.InfAdicionais) && string.IsNullOrWhiteSpace(TxtInfCpl.Text))
-                TxtInfCpl.Text = p.InfAdicionais.Trim();
-
-            SugerirIdDest();
-            RecalcTotais();
-            MessageBox.Show($"Produto \"{p.Nome}\" aplicado aos campos da nota.", "Estoque",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            AtualizarResumoItens();
         }
 
         private void SalvarCamposExtras(long id, NotaFiscalModel n)
@@ -735,7 +743,7 @@ namespace FTO_App.Views
                 CbsAliquota=@ca, CbsValor=@cv, IbsAliquota=@ia, IbsValor=@iv,
                 IbsAliquotaUf=@iau, IbsValorUf=@ivu, IbsAliquotaMun=@iam, IbsValorMun=@ivm,
                 IdDest=@idd, IndIEDest=@iie, Csosn=@csosn, ProdutoCest=@cest, ProdutoGtin=@gtin,
-                IcmsOrigem=@io, IcmsCst=@icst, PisCst=@psc, CofinsCst=@csc
+                IcmsOrigem=@io, IcmsCst=@icst, PisCst=@psc, CofinsCst=@csc, ItensJson=@itens
                 WHERE Id=@id",
                 new Dictionary<string, object>
                 {
@@ -748,6 +756,7 @@ namespace FTO_App.Views
                     ["@csosn"] = n.Csosn, ["@cest"] = n.ProdutoCest, ["@gtin"] = n.ProdutoGtin,
                     ["@io"] = n.IcmsOrigem, ["@icst"] = n.IcmsCst,
                     ["@psc"] = n.PisCst, ["@csc"] = n.CofinsCst,
+                    ["@itens"] = n.SerializarItens(),
                     ["@id"] = id
                 });
         }
@@ -768,6 +777,9 @@ namespace FTO_App.Views
             SetComboTag(CbIndFinal, n.ConsumidorFinal);
             SetComboTag(CbIndPres, n.PresencaComprador);
             SetComboTag(CbIndIEDest, string.IsNullOrWhiteSpace(n.IndIEDest) ? "9" : n.IndIEDest);
+            SetComboTag(CbFormaPag, string.IsNullOrWhiteSpace(n.FormaPagamento) ? "01" : n.FormaPagamento);
+            CbCliente.SelectedItem = null;
+            CbCliente.Text = "";
             TxtDestNome.Text = n.DestNome;
             TxtDestDoc.Text = n.DestCpfCnpj;
             TxtDestIe.Text = n.DestIe;
@@ -779,74 +791,30 @@ namespace FTO_App.Views
             TxtDestUf.Text = n.DestUf;
             TxtDestCep.Text = n.DestCep;
             TxtDestIbge.Text = n.DestCodigoIbge;
-            TxtProdCod.Text = n.ProdutoCodigo;
-            TxtProdDesc.Text = n.ProdutoDescricao;
-            _suprimirBuscaNcm = true;
-            TxtProdNcm.Text = n.ProdutoNcm;
-            _suprimirBuscaNcm = false;
-            TxtProdCest.Text = n.ProdutoCest;
-            TxtProdGtin.Text = string.IsNullOrWhiteSpace(n.ProdutoGtin) ? "SEM GTIN" : n.ProdutoGtin;
-            TxtProdCfop.Text = n.ProdutoCfop;
-            TxtProdUn.Text = n.ProdutoUnidade;
-            TxtProdQtd.Text = n.ProdutoQuantidade.ToString(PtBr);
-            TxtProdVUnit.Text = n.ProdutoValorUnitario.ToString("N2", PtBr);
-            SetComboTag(CbIcmsOrigem, n.IcmsOrigem);
-            TxtIcmsCst.Text = string.IsNullOrWhiteSpace(n.IcmsCst) ? "00" : n.IcmsCst;
-            CbCsosn.Text = string.IsNullOrWhiteSpace(n.Csosn) ? "102" : n.Csosn;
-            TxtIcmsAliq.Text = n.IcmsAliquota.ToString(PtBr);
-            TxtPisCst.Text = string.IsNullOrWhiteSpace(n.PisCst) ? "01" : n.PisCst;
-            TxtPisAliq.Text = n.PisAliquota.ToString(PtBr);
-            TxtCofinsCst.Text = string.IsNullOrWhiteSpace(n.CofinsCst) ? "01" : n.CofinsCst;
-            TxtCofinsAliq.Text = n.CofinsAliquota.ToString(PtBr);
             TxtInfCpl.Text = n.InformacoesComplementares;
-            TxtCstIbsCbs.Text = string.IsNullOrWhiteSpace(n.CstIbsCbs) ? "000" : n.CstIbsCbs;
-            TxtClassTrib.Text = string.IsNullOrWhiteSpace(n.ClassTrib) ? "000001" : n.ClassTrib;
-            TxtCbsAliqNf.Text = n.CbsAliquota.ToString("0.####", PtBr);
-            TxtIbsAliqNf.Text = n.IbsAliquota.ToString("0.####", PtBr);
-            ChkAutoIbsCbs.IsChecked = false;
-            TxtCbsValor.Text = n.CbsValor.ToString("N2", PtBr);
-            TxtIbsValor.Text = n.IbsValor.ToString("N2", PtBr);
-            TxtIbsUfValor.Text = n.IbsValorUf.ToString("N2", PtBr);
-            TxtIbsMunValor.Text = n.IbsValorMun.ToString("N2", PtBr);
-            AtualizarPainelIcmsPorCrt();
+
+            _itens.Clear();
+            n.GarantirItens();
+            foreach (var item in n.Itens)
+                _itens.Add(item.Clonar());
+
             AtualizarHintHomolog();
-            RecalcTotais();
+            AtualizarResumoItens();
         }
 
         private NotaFiscalModel MontarNota()
         {
-            decimal qtd = ParseDec(TxtProdQtd.Text);
-            decimal unit = ParseDec(TxtProdVUnit.Text);
-            decimal total = qtd * unit;
-            decimal icmsA = ParseDec(TxtIcmsAliq.Text);
-            decimal pisA = ParseDec(TxtPisAliq.Text);
-            decimal cofA = ParseDec(TxtCofinsAliq.Text);
-
             long.TryParse(TxtNumero.Text, out long numero);
             var cliente = CbCliente.SelectedItem as ClienteModel;
             var cfg = EmpresaConfigStore.Current;
 
-            RecalcTotais();
-            decimal cbsA = ParseDec(TxtCbsAliqNf.Text);
-            decimal ibsA = ParseDec(TxtIbsAliqNf.Text);
-            decimal ibsUfV = ParseDec(TxtIbsUfValor.Text);
-            decimal ibsMunV = ParseDec(TxtIbsMunValor.Text);
-            decimal ibsUfA = total > 0 ? Math.Round(ibsUfV * 100m / total, 4) : 0;
-            decimal ibsMunA = total > 0 ? Math.Round(ibsMunV * 100m / total, 4) : 0;
-            if (ChkAutoIbsCbs?.IsChecked != false && cfg.IbsCbsCalculoAutomatico)
-            {
-                var r = ReformaTributariaService.Calcular(total, cfg);
-                ibsUfA = r.AliquotaIbsUf;
-                ibsMunA = r.AliquotaIbsMun;
-            }
-
             string idDest = GetComboTag(CbIdDest, NfeXmlService.InferirIdDest(
-                TxtProdCfop.Text, cfg.Uf, TxtDestUf.Text));
+                _itens.FirstOrDefault()?.Cfop, cfg.Uf, TxtDestUf.Text));
 
             var (indIe, ieDest) = NfeXmlService.ConciliarIndIeDest(
                 GetComboTag(CbIndIEDest, "9"), TxtDestIe.Text);
 
-            return new NotaFiscalModel
+            var nota = new NotaFiscalModel
             {
                 NaturezaOperacao = NaturezaOperacaoAtual(),
                 Modelo = "55",
@@ -872,43 +840,15 @@ namespace FTO_App.Views
                 DestUf = TxtDestUf.Text.Trim().ToUpperInvariant(),
                 DestCep = TxtDestCep.Text.Trim(),
                 DestCodigoIbge = TxtDestIbge.Text.Trim(),
-                ProdutoCodigo = TxtProdCod.Text.Trim(),
-                ProdutoDescricao = TxtProdDesc.Text.Trim(),
-                ProdutoNcm = ReformaTributariaService.NormalizarNcm(TxtProdNcm.Text),
-                ProdutoCest = TxtProdCest.Text.Trim(),
-                ProdutoGtin = string.IsNullOrWhiteSpace(TxtProdGtin.Text) ? "SEM GTIN" : TxtProdGtin.Text.Trim(),
-                ProdutoCfop = TxtProdCfop.Text.Trim(),
-                ProdutoUnidade = TxtProdUn.Text.Trim(),
-                ProdutoQuantidade = qtd,
-                ProdutoValorUnitario = unit,
-                ProdutoValorTotal = total,
-                IcmsOrigem = GetComboTag(CbIcmsOrigem, "0"),
-                IcmsCst = string.IsNullOrWhiteSpace(TxtIcmsCst.Text) ? "00" : TxtIcmsCst.Text.Trim(),
-                Csosn = string.IsNullOrWhiteSpace(CbCsosn.Text) ? "102" : CbCsosn.Text.Trim(),
-                IcmsAliquota = icmsA,
-                IcmsValor = Math.Round(total * icmsA / 100m, 2),
-                PisCst = string.IsNullOrWhiteSpace(TxtPisCst.Text) ? "01" : TxtPisCst.Text.Trim(),
-                PisAliquota = pisA,
-                PisValor = Math.Round(total * pisA / 100m, 2),
-                CofinsCst = string.IsNullOrWhiteSpace(TxtCofinsCst.Text) ? "01" : TxtCofinsCst.Text.Trim(),
-                CofinsAliquota = cofA,
-                CofinsValor = Math.Round(total * cofA / 100m, 2),
-                CstIbsCbs = ReformaTributariaService.NormalizarCst(TxtCstIbsCbs.Text),
-                ClassTrib = ReformaTributariaService.NormalizarClassTrib(TxtClassTrib.Text),
-                CbsAliquota = cbsA,
-                CbsValor = ParseDec(TxtCbsValor.Text),
-                IbsAliquota = ibsA,
-                IbsValor = ParseDec(TxtIbsValor.Text),
-                IbsAliquotaUf = ibsUfA,
-                IbsValorUf = ibsUfV,
-                IbsAliquotaMun = ibsMunA,
-                IbsValorMun = ibsMunV,
-                ValorProdutos = total,
-                ValorTotalNota = total,
                 FormaPagamento = GetComboTag(CbFormaPag, "01"),
                 InformacoesComplementares = TxtInfCpl.Text.Trim(),
-                Status = "Rascunho"
+                Status = "Rascunho",
+                Itens = _itens.Select(i => i.Clonar()).ToList()
             };
+
+            // Soma os itens e espelha o 1º nas colunas antigas da tabela.
+            nota.RecalcularTotais();
+            return nota;
         }
 
         private Dictionary<string, object> Parametros(NotaFiscalModel n) => new()
@@ -960,7 +900,7 @@ namespace FTO_App.Views
                 }
 
                 int offset = (_page - 1) * PageSize;
-                using var cmd = Database.Cmd(conn, 
+                using var cmd = Database.Cmd(conn,
                     $"SELECT * FROM NotasFiscais {where} ORDER BY Id DESC LIMIT {PageSize} OFFSET {offset}");
                 if (!string.IsNullOrEmpty(_filtro)) cmd.Parameters.AddWithValue("@q", $"%{_filtro}%");
                 if (!string.IsNullOrEmpty(statusTag)) cmd.Parameters.AddWithValue("@st", statusTag);
@@ -995,9 +935,17 @@ namespace FTO_App.Views
             }
         }
 
+        /// <summary>Linha → modelo com os itens: coluna JSON quando existe, colunas antigas quando não.</summary>
+        private static NotaFiscalModel MapRow(NpgsqlDataReader r)
+        {
+            var nota = MapRowCampos(r);
+            nota.CarregarItens(Col(r, "ItensJson"));
+            return nota;
+        }
+
         /// <summary>Mapeamento único linha→modelo, reaproveitado pela grade (<see cref="LoadGrid"/>) e
         /// pelo carregamento individual (<see cref="CarregarNotaPorId"/>) — evita duplicar ~70 linhas.</summary>
-        private static NotaFiscalModel MapRow(NpgsqlDataReader r) => new()
+        private static NotaFiscalModel MapRowCampos(NpgsqlDataReader r) => new()
         {
             Id = Convert.ToInt64(Database.FieldOrDbNull(r, "Id")),
             Serie = Col(r, "Serie"),
