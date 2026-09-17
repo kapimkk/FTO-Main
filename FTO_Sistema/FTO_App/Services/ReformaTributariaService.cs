@@ -228,15 +228,28 @@ namespace FTO_App.Services
         /// exige os valores de transição.
         /// </summary>
         public static Resultado CalcularParaEmissao(
-            decimal baseCalculo, NotaFiscalModel nota, int? anoEmissao = null, EmpresaConfig? cfg = null)
+            decimal baseCalculo, NotaFiscalModel nota, int? anoEmissao = null, EmpresaConfig? cfg = null) =>
+            CalcularParaEmissao(baseCalculo, nota.CbsAliquota, nota.IbsAliquotaUf, nota.IbsAliquotaMun,
+                nota.CstIbsCbs, nota.ClassTrib, anoEmissao, cfg);
+
+        /// <summary>Mesmo cálculo de <see cref="CalcularParaEmissao(decimal, NotaFiscalModel, int?, EmpresaConfig?)"/>,
+        /// por item da NF-e — cada det leva o seu grupo IBSCBS.</summary>
+        public static Resultado CalcularParaEmissao(
+            NotaFiscalItemModel item, int? anoEmissao = null, EmpresaConfig? cfg = null) =>
+            CalcularParaEmissao(item.ValorTotal, item.CbsAliquota, item.IbsAliquotaUf, item.IbsAliquotaMun,
+                item.CstIbsCbs, item.ClassTrib, anoEmissao, cfg);
+
+        private static Resultado CalcularParaEmissao(
+            decimal baseCalculo, decimal cbsInformada, decimal ibsUfInformada, decimal ibsMunInformada,
+            string? cst, string? classTrib, int? anoEmissao, EmpresaConfig? cfg)
         {
             int ano = anoEmissao ?? DateTime.Now.Year;
             var (cbsOficial, ibsUfOficial, ibsMunOficial) = AliquotasOficiaisTransicao(ano, cfg);
 
             // Em 2025-2028 usa alíquotas oficiais de transição; depois respeita a nota/config
-            decimal cbs = ano <= 2028 ? cbsOficial : (nota.CbsAliquota > 0 ? nota.CbsAliquota : cbsOficial);
-            decimal ibsUf = ano <= 2028 ? ibsUfOficial : nota.IbsAliquotaUf;
-            decimal ibsMun = ano <= 2028 ? ibsMunOficial : nota.IbsAliquotaMun;
+            decimal cbs = ano <= 2028 ? cbsOficial : (cbsInformada > 0 ? cbsInformada : cbsOficial);
+            decimal ibsUf = ano <= 2028 ? ibsUfOficial : ibsUfInformada;
+            decimal ibsMun = ano <= 2028 ? ibsMunOficial : ibsMunInformada;
             decimal ibs = ibsUf + ibsMun;
 
             baseCalculo = Math.Round(Math.Max(0, baseCalculo), 2);
@@ -257,8 +270,8 @@ namespace FTO_App.Services
                 ValorIbsUf = vUf,
                 ValorIbsMun = vMun,
                 ValorTotalIva = vCbs + vIbs,
-                Cst = NormalizarCst(nota.CstIbsCbs),
-                ClassTrib = NormalizarClassTrib(nota.ClassTrib),
+                Cst = NormalizarCst(cst),
+                ClassTrib = NormalizarClassTrib(classTrib),
                 Observacao =
                     $"Emissão {ano}: pIBSUF={ibsUf:0.####}% / pIBSMun={ibsMun:0.####}% / pCBS={cbs:0.####}% (LC 214/2025)." +
                     (ano >= 2027 && UsandoCbsDeFallback(cfg)

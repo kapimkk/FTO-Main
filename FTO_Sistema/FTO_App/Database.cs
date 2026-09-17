@@ -719,7 +719,10 @@ namespace FTO_App
                 "indiedest TEXT DEFAULT '9'",
                 "csosn TEXT DEFAULT '102'",
                 "produtocest TEXT DEFAULT ''",
-                "produtogtin TEXT DEFAULT 'SEM GTIN'"
+                "produtogtin TEXT DEFAULT 'SEM GTIN'",
+                // Itens (det) da NF-e em JSON. Vazio = nota anterior aos vários itens, que é
+                // convertida a partir das colunas produto*/icms*/pis*/cofins* ao carregar.
+                "itensjson TEXT DEFAULT ''"
             };
             AddColumns(conn, "notasfiscais", cols);
         }

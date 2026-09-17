@@ -1,10 +1,25 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
 
 namespace FTO_App.Models
 {
     /// <summary>Campos do corpo NF-e alinhados ao contrato da API Fiscal (autorização).</summary>
     public class NotaFiscalModel
     {
+        private static readonly JsonSerializerOptions JsonItens = new() { PropertyNameCaseInsensitive = true };
+
+        /// <summary>
+        /// Itens (det) da nota — a fonte de verdade do que é emitido.
+        ///
+        /// Os campos Produto*/Icms*/Pis*/Cofins*/Ibs*/Cbs* abaixo são o formato ANTIGO (uma nota =
+        /// um produto) e continuam existindo só por compatibilidade com as colunas da tabela:
+        /// nota gravada antes dos itens é convertida por <see cref="GarantirItens"/>, e ao salvar
+        /// o 1º item é espelhado neles para uma estação ainda na versão antiga não abrir a nota vazia.
+        /// </summary>
+        public List<NotaFiscalItemModel> Itens { get; set; } = new();
+
         public long Id { get; set; }
         public string NaturezaOperacao { get; set; } = "Venda de mercadoria";
         public string Modelo { get; set; } = "55"; // 55=NF-e
@@ -93,6 +108,145 @@ namespace FTO_App.Models
         public string XmlAutorizado { get; set; } = string.Empty;
 
         public bool TemChaveAcesso => !string.IsNullOrWhiteSpace(ChaveAcesso);
+
+        /// <summary>
+        /// Nota gravada antes do suporte a vários itens guarda o produto nos campos planos.
+        /// Se não há itens, monta um a partir deles. Idempotente.
+        /// </summary>
+        public void GarantirItens()
+        {
+            if (Itens.Count > 0) return;
+
+            bool temProduto = !string.IsNullOrWhiteSpace(ProdutoDescricao) ||
+                              !string.IsNullOrWhiteSpace(ProdutoNcm) ||
+                              ProdutoValorUnitario > 0 || ProdutoValorTotal > 0;
+            if (!temProduto) return;
+
+            Itens.Add(new NotaFiscalItemModel
+            {
+                Codigo = ProdutoCodigo,
+                Descricao = ProdutoDescricao,
+                Ncm = ProdutoNcm,
+                Cest = ProdutoCest,
+                Gtin = string.IsNullOrWhiteSpace(ProdutoGtin) ? "SEM GTIN" : ProdutoGtin,
+                Cfop = ProdutoCfop,
+                Unidade = ProdutoUnidade,
+                Quantidade = ProdutoQuantidade,
+                ValorUnitario = ProdutoValorUnitario,
+                // Rascunho antigo podia ter ValorTotal=0 com qtd×unit preenchidos (MapRow antigo)
+                ValorTotal = ProdutoValorTotal > 0
+                    ? ProdutoValorTotal
+                    : Math.Round(ProdutoQuantidade * ProdutoValorUnitario, 2),
+                IcmsOrigem = IcmsOrigem,
+                IcmsCst = IcmsCst,
+                Csosn = Csosn,
+                IcmsAliquota = IcmsAliquota,
+                IcmsValor = IcmsValor,
+                PisCst = PisCst,
+                PisAliquota = PisAliquota,
+                PisValor = PisValor,
+                CofinsCst = CofinsCst,
+                CofinsAliquota = CofinsAliquota,
+                CofinsValor = CofinsValor,
+                CstIbsCbs = CstIbsCbs,
+                ClassTrib = ClassTrib,
+                CbsAliquota = CbsAliquota,
+                CbsValor = CbsValor,
+                IbsAliquota = IbsAliquota,
+                IbsValor = IbsValor,
+                IbsAliquotaUf = IbsAliquotaUf,
+                IbsValorUf = IbsValorUf,
+                IbsAliquotaMun = IbsAliquotaMun,
+                IbsValorMun = IbsValorMun
+            });
+        }
+
+        /// <summary>
+        /// Recalcula cada item e soma os totais da nota a partir dos valores JÁ arredondados de
+        /// cada item (é assim que a SEFAZ confere). Depois espelha o 1º item nos campos legados.
+        /// </summary>
+        public void RecalcularTotais()
+        {
+            GarantirItens();
+            foreach (var item in Itens)
+                item.Recalcular();
+
+            ValorProdutos = Itens.Sum(i => i.ValorTotal);
+            ValorTotalNota = ValorProdutos + ValorFrete - ValorDesconto;
+
+            IcmsValor = Itens.Sum(i => i.IcmsValor);
+            PisValor = Itens.Sum(i => i.PisValor);
+            CofinsValor = Itens.Sum(i => i.CofinsValor);
+            CbsValor = Itens.Sum(i => i.CbsValor);
+            IbsValor = Itens.Sum(i => i.IbsValor);
+            IbsValorUf = Itens.Sum(i => i.IbsValorUf);
+            IbsValorMun = Itens.Sum(i => i.IbsValorMun);
+
+            EspelharPrimeiroItem();
+        }
+
+        private void EspelharPrimeiroItem()
+        {
+            var p = Itens.FirstOrDefault();
+            if (p == null) return;
+
+            ProdutoCodigo = p.Codigo;
+            ProdutoDescricao = p.Descricao;
+            ProdutoNcm = p.Ncm;
+            ProdutoCest = p.Cest;
+            ProdutoGtin = p.Gtin;
+            ProdutoCfop = p.Cfop;
+            ProdutoUnidade = p.Unidade;
+            ProdutoQuantidade = p.Quantidade;
+            ProdutoValorUnitario = p.ValorUnitario;
+            ProdutoValorTotal = p.ValorTotal;
+            IcmsOrigem = p.IcmsOrigem;
+            IcmsCst = p.IcmsCst;
+            Csosn = p.Csosn;
+            IcmsAliquota = p.IcmsAliquota;
+            PisCst = p.PisCst;
+            PisAliquota = p.PisAliquota;
+            CofinsCst = p.CofinsCst;
+            CofinsAliquota = p.CofinsAliquota;
+            CstIbsCbs = p.CstIbsCbs;
+            ClassTrib = p.ClassTrib;
+            CbsAliquota = p.CbsAliquota;
+            IbsAliquota = p.IbsAliquota;
+            IbsAliquotaUf = p.IbsAliquotaUf;
+            IbsAliquotaMun = p.IbsAliquotaMun;
+        }
+
+        public string SerializarItens() => JsonSerializer.Serialize(Itens);
+
+        /// <summary>Carrega os itens da coluna JSON. Vazio/inválido → cai no formato antigo.</summary>
+        public void CarregarItens(string? json)
+        {
+            Itens = new List<NotaFiscalItemModel>();
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                try
+                {
+                    Itens = JsonSerializer.Deserialize<List<NotaFiscalItemModel>>(json, JsonItens)
+                            ?? new List<NotaFiscalItemModel>();
+                }
+                catch (JsonException)
+                {
+                    Itens = new List<NotaFiscalItemModel>();
+                }
+            }
+            GarantirItens();
+        }
+
+        /// <summary>Resumo curto dos itens para cabeçalhos ("Parafuso M6" / "Parafuso M6 +2 itens").</summary>
+        public string ResumoItens
+        {
+            get
+            {
+                if (Itens.Count == 0) return string.IsNullOrWhiteSpace(ProdutoDescricao) ? "(sem itens)" : ProdutoDescricao;
+                string primeiro = Itens[0].Descricao;
+                return Itens.Count == 1 ? primeiro : $"{primeiro} +{Itens.Count - 1} {(Itens.Count == 2 ? "item" : "itens")}";
+            }
+        }
 
         /// <summary>Rótulo amigável do modelo fiscal, usado na grade e nos títulos das janelas.</summary>
         public string ModeloExibicao => "NF-e";

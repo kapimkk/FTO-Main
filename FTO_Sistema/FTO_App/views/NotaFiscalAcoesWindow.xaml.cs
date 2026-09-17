@@ -48,7 +48,7 @@ namespace FTO_App.Views
         private void AtualizarCabecalho()
         {
             LblTitulo.Text = $"⚡ Ações fiscais — NF-e {_nota.NumeroExibicao}";
-            LblResumo.Text = $"{_nota.DestNome}\n{_nota.ProdutoDescricao} — {_nota.ValorTotalFormatado} · Status: {_nota.Status}";
+            LblResumo.Text = $"{_nota.DestNome}\n{_nota.ResumoItens} — {_nota.ValorTotalFormatado} · Status: {_nota.Status}";
         }
 
         /// <summary>O dhEmi enviado à SEFAZ é sempre o instante real do clique (ver FiscalPayloadBuilder/
@@ -92,18 +92,21 @@ namespace FTO_App.Views
 
         private bool ValidarDadosMinimos()
         {
-            if (string.IsNullOrWhiteSpace(_nota.DestNome) || string.IsNullOrWhiteSpace(_nota.ProdutoDescricao))
+            _nota.GarantirItens();
+            if (string.IsNullOrWhiteSpace(_nota.DestNome) || _nota.Itens.Count == 0)
             {
-                MessageBox.Show("A nota não tem destinatário ou produto preenchido. Edite o lançamento antes de continuar.",
+                MessageBox.Show("A nota não tem destinatário ou nenhum item. Edite o lançamento antes de continuar.",
                     "Nota Fiscal", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
-            if (!ReformaTributariaService.NcmValido(_nota.ProdutoNcm))
+
+            var problemas = NotaFiscalValidacao.ValidarItens(_nota.Itens);
+            if (problemas.Count > 0)
             {
                 MessageBox.Show(
-                    "NCM inválido ou vazio. Informe um NCM com 8 dígitos (ou 2 para capítulo) no cadastro da nota.\n\n" +
-                    "A SEFAZ rejeita NCM vazio com erro XSD_VALIDATION no elemento NCM.",
-                    "Nota Fiscal", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Corrija os itens antes de continuar (Editar a nota):\n\n• " + string.Join("\n• ", problemas) +
+                    "\n\nA SEFAZ rejeita NCM vazio com erro XSD_VALIDATION no elemento NCM.",
+                    "Nota Fiscal — itens", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
@@ -198,19 +201,25 @@ namespace FTO_App.Views
             _nota.Ambiente = FiscalApiClient.NormalizarTpAmb(AmbienteAtual());
             _nota.Modelo = "55";
 
-            // Normaliza campos que a SEFAZ/XSD rejeitam se vierem malformados do rascunho
-            _nota.ProdutoNcm = ReformaTributariaService.NormalizarNcm(_nota.ProdutoNcm);
-            _nota.ClassTrib = ReformaTributariaService.NormalizarClassTrib(_nota.ClassTrib);
-            _nota.CstIbsCbs = ReformaTributariaService.NormalizarCst(_nota.CstIbsCbs);
-            var ibsCbs = ReformaTributariaService.CalcularParaEmissao(_nota.ProdutoValorTotal, _nota);
-            _nota.CbsAliquota = ibsCbs.AliquotaCbs;
-            _nota.CbsValor = ibsCbs.ValorCbs;
-            _nota.IbsAliquota = ibsCbs.AliquotaIbs;
-            _nota.IbsValor = ibsCbs.ValorIbs;
-            _nota.IbsAliquotaUf = ibsCbs.AliquotaIbsUf;
-            _nota.IbsValorUf = ibsCbs.ValorIbsUf;
-            _nota.IbsAliquotaMun = ibsCbs.AliquotaIbsMun;
-            _nota.IbsValorMun = ibsCbs.ValorIbsMun;
+            // Normaliza campos que a SEFAZ/XSD rejeitam se vierem malformados do rascunho — item a item
+            foreach (var item in _nota.Itens)
+            {
+                item.Ncm = ReformaTributariaService.NormalizarNcm(item.Ncm);
+                item.ClassTrib = ReformaTributariaService.NormalizarClassTrib(item.ClassTrib);
+                item.CstIbsCbs = ReformaTributariaService.NormalizarCst(item.CstIbsCbs);
+                item.Recalcular();
+
+                var ibsCbs = ReformaTributariaService.CalcularParaEmissao(item);
+                item.CbsAliquota = ibsCbs.AliquotaCbs;
+                item.CbsValor = ibsCbs.ValorCbs;
+                item.IbsAliquota = ibsCbs.AliquotaIbs;
+                item.IbsValor = ibsCbs.ValorIbs;
+                item.IbsAliquotaUf = ibsCbs.AliquotaIbsUf;
+                item.IbsValorUf = ibsCbs.ValorIbsUf;
+                item.IbsAliquotaMun = ibsCbs.AliquotaIbsMun;
+                item.IbsValorMun = ibsCbs.ValorIbsMun;
+            }
+            _nota.RecalcularTotais();
 
             string baseUrl = BaseUrlNfe();
             if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(cfg.FiscalApiKey))

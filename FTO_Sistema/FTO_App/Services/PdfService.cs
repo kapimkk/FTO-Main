@@ -92,11 +92,64 @@ namespace FTO_App.Services
                         if (!string.IsNullOrWhiteSpace(nota.DestCpfCnpj))
                             col.Item().Text($"CPF/CNPJ: {nota.DestCpfCnpj}").FontSize(9);
 
-                        col.Item().PaddingTop(8).Text("PRODUTO / SERVIÇO").Bold().FontSize(11);
-                        col.Item().Text(string.IsNullOrWhiteSpace(nota.ProdutoDescricao) ? "-" : nota.ProdutoDescricao);
-                        col.Item().Text(
-                            $"Qtd {nota.ProdutoQuantidade.ToString("0.####", PtBr)} {nota.ProdutoUnidade}  ×  " +
-                            $"{nota.ProdutoValorUnitario.ToString("C2", PtBr)}  =  {nota.ProdutoValorTotal.ToString("C2", PtBr)}");
+                        nota.GarantirItens();
+                        col.Item().PaddingTop(8).Text($"PRODUTOS / SERVIÇOS ({nota.Itens.Count})").Bold().FontSize(11);
+                        if (nota.Itens.Count == 0)
+                        {
+                            col.Item().Text("-");
+                        }
+                        else
+                        {
+                            col.Item().Table(tabela =>
+                            {
+                                tabela.ColumnsDefinition(c =>
+                                {
+                                    c.ConstantColumn(22);   // #
+                                    c.ConstantColumn(58);   // código
+                                    c.RelativeColumn();     // descrição
+                                    c.ConstantColumn(56);   // NCM
+                                    c.ConstantColumn(34);   // CFOP
+                                    c.ConstantColumn(44);   // qtd
+                                    c.ConstantColumn(26);   // un
+                                    c.ConstantColumn(62);   // unitário
+                                    c.ConstantColumn(66);   // total
+                                });
+
+                                static IContainer Cab(IContainer c) =>
+                                    c.DefaultTextStyle(x => x.SemiBold().FontSize(7.5f))
+                                     .Background(Colors.Grey.Lighten3).PaddingVertical(3).PaddingHorizontal(2);
+                                static IContainer Cel(IContainer c) =>
+                                    c.DefaultTextStyle(x => x.FontSize(8))
+                                     .BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3).PaddingHorizontal(2);
+
+                                tabela.Header(h =>
+                                {
+                                    h.Cell().Element(Cab).Text("#");
+                                    h.Cell().Element(Cab).Text("Código");
+                                    h.Cell().Element(Cab).Text("Descrição");
+                                    h.Cell().Element(Cab).Text("NCM");
+                                    h.Cell().Element(Cab).Text("CFOP");
+                                    h.Cell().Element(Cab).AlignRight().Text("Qtd");
+                                    h.Cell().Element(Cab).Text("Un");
+                                    h.Cell().Element(Cab).AlignRight().Text("Unitário");
+                                    h.Cell().Element(Cab).AlignRight().Text("Total");
+                                });
+
+                                for (int i = 0; i < nota.Itens.Count; i++)
+                                {
+                                    var it = nota.Itens[i];
+                                    tabela.Cell().Element(Cel).Text((i + 1).ToString(PtBr));
+                                    tabela.Cell().Element(Cel).Text(it.Codigo);
+                                    tabela.Cell().Element(Cel).Text(string.IsNullOrWhiteSpace(it.Descricao) ? "-" : it.Descricao);
+                                    tabela.Cell().Element(Cel).Text(it.Ncm);
+                                    tabela.Cell().Element(Cel).Text(it.Cfop);
+                                    tabela.Cell().Element(Cel).AlignRight().Text(it.Quantidade.ToString("0.####", PtBr));
+                                    tabela.Cell().Element(Cel).Text(it.Unidade);
+                                    tabela.Cell().Element(Cel).AlignRight().Text(it.ValorUnitario.ToString("C2", PtBr));
+                                    tabela.Cell().Element(Cel).AlignRight().Text(it.ValorTotal.ToString("C2", PtBr));
+                                }
+                            });
+                        }
 
                         col.Item().PaddingTop(10).Row(r =>
                         {

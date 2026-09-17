@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Xml.Linq;
 using FTO_App.Models;
@@ -31,10 +33,13 @@ namespace FTO_App.Services
             bool homolog = ambiente == "2";
 
             string destNome = homolog ? NomeDestHomologacao : nota.DestNome;
-            string xProd = AplicarHomologDescricao(nota.ProdutoDescricao, homolog);
+
+            nota.RecalcularTotais();
+            if (nota.Itens.Count == 0)
+                throw new InvalidOperationException("A NF-e não tem itens.");
 
             string idDest = string.IsNullOrWhiteSpace(nota.IdDest)
-                ? InferirIdDest(nota.ProdutoCfop, emitente.Uf, nota.DestUf)
+                ? InferirIdDest(nota.Itens[0].Cfop, emitente.Uf, nota.DestUf)
                 : nota.IdDest.Trim();
 
             var (indIEDest, ieDest) = ConciliarIndIeDest(nota.IndIEDest, nota.DestIe);
@@ -108,60 +113,34 @@ namespace FTO_App.Services
                 Opt("email", nota.DestEmail)
             );
 
-            var prod = new XElement(Nfe + "prod",
-                El("cProd", string.IsNullOrWhiteSpace(nota.ProdutoCodigo) ? "001" : nota.ProdutoCodigo),
-                El("cEAN", string.IsNullOrWhiteSpace(nota.ProdutoGtin) || nota.ProdutoGtin == "SEM GTIN" ? "SEM GTIN" : nota.ProdutoGtin),
-                El("xProd", xProd),
-                El("NCM", ReformaTributariaService.NormalizarNcm(nota.ProdutoNcm)));
-            string cest = SomenteDigitos(nota.ProdutoCest);
-            if (!string.IsNullOrEmpty(cest))
-                prod.Add(El("CEST", cest));
-            prod.Add(
-                El("CFOP", nota.ProdutoCfop),
-                El("uCom", nota.ProdutoUnidade),
-                El("qCom", Dec(nota.ProdutoQuantidade, "0.####")),
-                El("vUnCom", Dec(nota.ProdutoValorUnitario)),
-                El("vProd", Dec(nota.ProdutoValorTotal)),
-                El("cEANTrib", string.IsNullOrWhiteSpace(nota.ProdutoGtin) || nota.ProdutoGtin == "SEM GTIN" ? "SEM GTIN" : nota.ProdutoGtin),
-                El("uTrib", nota.ProdutoUnidade),
-                El("qTrib", Dec(nota.ProdutoQuantidade, "0.####")),
-                El("vUnTrib", Dec(nota.ProdutoValorUnitario)),
-                El("indTot", "1")
-            );
+            // Mesmos valores efetivos por item da emissão via API — XML e JSON não podem divergir.
+            var itens = FiscalPayloadBuilder.ItemEmissao.Montar(nota, crt);
+            var dets = itens.Select(e => MontarDet(e, crt, homolog)).ToList();
 
-            var det = new XElement(Nfe + "det", new XAttribute("nItem", "1"),
-                prod,
-                new XElement(Nfe + "imposto",
-                    MontarIcms(nota, crt),
-                    MontarPis(nota),
-                    MontarCofins(nota),
-                    MontarIbsCbsItem(nota)
-                )
-            );
-
+            decimal vProd = itens.Sum(i => i.Item.ValorTotal);
             var total = new XElement(Nfe + "total",
                 new XElement(Nfe + "ICMSTot",
-                    El("vBC", Dec(crt == "3" ? nota.ProdutoValorTotal : 0m)),
-                    El("vICMS", Dec(crt == "3" ? nota.IcmsValor : 0m)),
+                    El("vBC", Dec(itens.Sum(i => i.VBcIcms))),
+                    El("vICMS", Dec(itens.Sum(i => i.VIcms))),
                     El("vICMSDeson", "0.00"),
                     El("vFCP", "0.00"),
                     El("vBCST", "0.00"),
                     El("vST", "0.00"),
                     El("vFCPST", "0.00"),
                     El("vFCPSTRet", "0.00"),
-                    El("vProd", Dec(nota.ValorProdutos > 0 ? nota.ValorProdutos : nota.ProdutoValorTotal)),
+                    El("vProd", Dec(vProd)),
                     El("vFrete", Dec(nota.ValorFrete)),
                     El("vSeg", "0.00"),
                     El("vDesc", Dec(nota.ValorDesconto)),
                     El("vII", "0.00"),
                     El("vIPI", "0.00"),
                     El("vIPIDevol", "0.00"),
-                    El("vPIS", Dec(nota.PisValor)),
-                    El("vCOFINS", Dec(nota.CofinsValor)),
+                    El("vPIS", Dec(itens.Sum(i => i.VPis))),
+                    El("vCOFINS", Dec(itens.Sum(i => i.VCofins))),
                     El("vOutro", "0.00"),
-                    El("vNF", Dec(nota.ValorTotalNota > 0 ? nota.ValorTotalNota : nota.ProdutoValorTotal))
+                    El("vNF", Dec(vProd + nota.ValorFrete - nota.ValorDesconto))
                 ),
-                MontarIbsCbsTot(nota)
+                MontarIbsCbsTot(itens)
             );
 
             string tPag = string.IsNullOrWhiteSpace(nota.FormaPagamento) ? "01" : nota.FormaPagamento.Trim();
@@ -175,7 +154,7 @@ namespace FTO_App.Services
             var pag = new XElement(Nfe + "pag", detPag);
 
             var infNFe = new XElement(Nfe + "infNFe", new XAttribute("versao", "4.00"),
-                ide, emit, dest, det, total,
+                ide, emit, dest, dets, total,
                 new XElement(Nfe + "transp", El("modFrete", "9")),
                 pag,
                 string.IsNullOrWhiteSpace(nota.InformacoesComplementares)
@@ -227,40 +206,88 @@ namespace FTO_App.Services
             return "1";
         }
 
-        private static XElement MontarIcms(NotaFiscalModel nota, string crt)
+        private static XElement MontarDet(FiscalPayloadBuilder.ItemEmissao e, string crt, bool homolog)
         {
-            string orig = string.IsNullOrWhiteSpace(nota.IcmsOrigem) ? "0" : nota.IcmsOrigem.Trim();
+            var item = e.Item;
+            string gtin = string.IsNullOrWhiteSpace(item.Gtin) || item.Gtin == "SEM GTIN" ? "SEM GTIN" : item.Gtin;
+
+            // Rejeição 373: em homologação só o xProd do PRIMEIRO item precisa ser o texto fixo.
+            string xProd = e.NItem == 1
+                ? AplicarHomologDescricao(item.Descricao, homolog)
+                : (item.Descricao ?? "").Trim();
+
+            var prod = new XElement(Nfe + "prod",
+                El("cProd", string.IsNullOrWhiteSpace(item.Codigo) ? e.NItem.ToString("000", CultureInfo.InvariantCulture) : item.Codigo),
+                El("cEAN", gtin),
+                El("xProd", xProd),
+                El("NCM", ReformaTributariaService.NormalizarNcm(item.Ncm)));
+            string cest = SomenteDigitos(item.Cest);
+            if (!string.IsNullOrEmpty(cest))
+                prod.Add(El("CEST", cest));
+            prod.Add(
+                El("CFOP", item.Cfop),
+                El("uCom", item.Unidade),
+                El("qCom", Dec(item.Quantidade, "0.####")),
+                El("vUnCom", Dec(item.ValorUnitario)),
+                El("vProd", Dec(item.ValorTotal)),
+                El("cEANTrib", gtin),
+                El("uTrib", item.Unidade),
+                El("qTrib", Dec(item.Quantidade, "0.####")),
+                El("vUnTrib", Dec(item.ValorUnitario)),
+                El("indTot", "1")
+            );
+
+            return new XElement(Nfe + "det", new XAttribute("nItem", e.NItem.ToString(CultureInfo.InvariantCulture)),
+                prod,
+                new XElement(Nfe + "imposto",
+                    MontarIcms(e, crt),
+                    MontarPis(e),
+                    MontarCofins(e),
+                    MontarIbsCbsItem(e.IbsCbs)
+                )
+            );
+        }
+
+        private static XElement MontarIcms(FiscalPayloadBuilder.ItemEmissao e, string crt)
+        {
+            var item = e.Item;
+            string orig = string.IsNullOrWhiteSpace(item.IcmsOrigem) ? "0" : item.IcmsOrigem.Trim();
 
             // Regime normal (CRT=3): CST
             if (crt == "3")
             {
-                string cst = string.IsNullOrWhiteSpace(nota.IcmsCst) ? "00" : nota.IcmsCst.Trim();
+                // 40/41/50 não têm base — mandar ICMS00 com vBC fazia o total divergir dos itens.
+                if (FiscalPayloadBuilder.IcmsSemBase(e.CstIcms))
+                {
+                    return new XElement(Nfe + "ICMS",
+                        new XElement(Nfe + "ICMS40", El("orig", orig), El("CST", e.CstIcms)));
+                }
+
                 return new XElement(Nfe + "ICMS",
                     new XElement(Nfe + "ICMS00",
                         El("orig", orig),
-                        El("CST", cst),
+                        El("CST", e.CstIcms),
                         El("modBC", "3"),
-                        El("vBC", Dec(nota.ProdutoValorTotal)),
-                        El("pICMS", Dec(nota.IcmsAliquota)),
-                        El("vICMS", Dec(nota.IcmsValor))
+                        El("vBC", Dec(e.VBcIcms)),
+                        El("pICMS", Dec(item.IcmsAliquota)),
+                        El("vICMS", Dec(e.VIcms))
                     )
                 );
             }
 
             // Simples / MEI: CSOSN
-            string csosn = string.IsNullOrWhiteSpace(nota.Csosn) ? "102" : nota.Csosn.Trim();
-            return new XElement(Nfe + "ICMS", MontarIcmsSn(orig, csosn, nota));
+            return new XElement(Nfe + "ICMS", MontarIcmsSn(orig, e.Csosn, item));
         }
 
-        private static XElement MontarIcmsSn(string orig, string csosn, NotaFiscalModel nota)
+        private static XElement MontarIcmsSn(string orig, string csosn, NotaFiscalItemModel item)
         {
             return csosn switch
             {
                 "101" => new XElement(Nfe + "ICMSSN101",
                     El("orig", orig),
                     El("CSOSN", csosn),
-                    El("pCredSN", Dec(nota.IcmsAliquota)),
-                    El("vCredICMSSN", Dec(nota.IcmsValor))),
+                    El("pCredSN", Dec(item.IcmsAliquota)),
+                    El("vCredICMSSN", Dec(item.IcmsValor))),
                 "201" => new XElement(Nfe + "ICMSSN201",
                     El("orig", orig),
                     El("CSOSN", csosn),
@@ -269,8 +296,8 @@ namespace FTO_App.Services
                     El("vBCST", "0.00"),
                     El("pICMSST", "0.00"),
                     El("vICMSST", "0.00"),
-                    El("pCredSN", Dec(nota.IcmsAliquota)),
-                    El("vCredICMSSN", Dec(nota.IcmsValor))),
+                    El("pCredSN", Dec(item.IcmsAliquota)),
+                    El("vCredICMSSN", Dec(item.IcmsValor))),
                 "202" or "203" => new XElement(Nfe + "ICMSSN202",
                     El("orig", orig),
                     El("CSOSN", csosn),
@@ -294,39 +321,37 @@ namespace FTO_App.Services
             };
         }
 
-        private static XElement MontarPis(NotaFiscalModel nota)
+        private static XElement MontarPis(FiscalPayloadBuilder.ItemEmissao e)
         {
-            string cst = string.IsNullOrWhiteSpace(nota.PisCst) ? "01" : nota.PisCst.Trim();
-            if (cst is "04" or "05" or "06" or "07" or "08" or "09")
+            if (FiscalPayloadBuilder.PisCofinsNaoTributado(e.CstPis))
             {
                 return new XElement(Nfe + "PIS",
-                    new XElement(Nfe + "PISNT", El("CST", cst)));
+                    new XElement(Nfe + "PISNT", El("CST", e.CstPis)));
             }
 
             return new XElement(Nfe + "PIS",
                 new XElement(Nfe + "PISAliq",
-                    El("CST", cst),
-                    El("vBC", Dec(nota.ProdutoValorTotal)),
-                    El("pPIS", Dec(nota.PisAliquota)),
-                    El("vPIS", Dec(nota.PisValor))
+                    El("CST", e.CstPis),
+                    El("vBC", Dec(e.Item.ValorTotal)),
+                    El("pPIS", Dec(e.Item.PisAliquota)),
+                    El("vPIS", Dec(e.VPis))
                 ));
         }
 
-        private static XElement MontarCofins(NotaFiscalModel nota)
+        private static XElement MontarCofins(FiscalPayloadBuilder.ItemEmissao e)
         {
-            string cst = string.IsNullOrWhiteSpace(nota.CofinsCst) ? "01" : nota.CofinsCst.Trim();
-            if (cst is "04" or "05" or "06" or "07" or "08" or "09")
+            if (FiscalPayloadBuilder.PisCofinsNaoTributado(e.CstCofins))
             {
                 return new XElement(Nfe + "COFINS",
-                    new XElement(Nfe + "COFINSNT", El("CST", cst)));
+                    new XElement(Nfe + "COFINSNT", El("CST", e.CstCofins)));
             }
 
             return new XElement(Nfe + "COFINS",
                 new XElement(Nfe + "COFINSAliq",
-                    El("CST", cst),
-                    El("vBC", Dec(nota.ProdutoValorTotal)),
-                    El("pCOFINS", Dec(nota.CofinsAliquota)),
-                    El("vCOFINS", Dec(nota.CofinsValor))
+                    El("CST", e.CstCofins),
+                    El("vBC", Dec(e.Item.ValorTotal)),
+                    El("pCOFINS", Dec(e.Item.CofinsAliquota)),
+                    El("vCOFINS", Dec(e.VCofins))
                 ));
         }
 
@@ -335,9 +360,8 @@ namespace FTO_App.Services
         /// (sem wrapper gIBS no item — ver DFeTiposBasicos / API §4.10).
         /// Usa as mesmas alíquotas de transição da API (CalcularParaEmissao) para não divergir do JSON.
         /// </summary>
-        private static XElement MontarIbsCbsItem(NotaFiscalModel nota)
+        private static XElement MontarIbsCbsItem(ReformaTributariaService.Resultado r)
         {
-            var r = ReformaTributariaService.CalcularParaEmissao(nota.ProdutoValorTotal, nota);
             return new XElement(Nfe + "IBSCBS",
                 El("CST", r.Cst),
                 El("cClassTrib", r.ClassTrib),
@@ -360,30 +384,29 @@ namespace FTO_App.Services
             );
         }
 
-        private static XElement MontarIbsCbsTot(NotaFiscalModel nota)
+        private static XElement MontarIbsCbsTot(IReadOnlyList<FiscalPayloadBuilder.ItemEmissao> itens)
         {
-            var r = ReformaTributariaService.CalcularParaEmissao(nota.ProdutoValorTotal, nota);
             return new XElement(Nfe + "IBSCBSTot",
-                El("vBCIBSCBS", Dec(r.BaseCalculo)),
+                El("vBCIBSCBS", Dec(itens.Sum(i => i.IbsCbs.BaseCalculo))),
                 new XElement(Nfe + "gIBS",
                     new XElement(Nfe + "gIBSUF",
                         El("vDif", "0.00"),
                         El("vDevTrib", "0.00"),
-                        El("vIBSUF", Dec(r.ValorIbsUf))
+                        El("vIBSUF", Dec(itens.Sum(i => i.IbsCbs.ValorIbsUf)))
                     ),
                     new XElement(Nfe + "gIBSMun",
                         El("vDif", "0.00"),
                         El("vDevTrib", "0.00"),
-                        El("vIBSMun", Dec(r.ValorIbsMun))
+                        El("vIBSMun", Dec(itens.Sum(i => i.IbsCbs.ValorIbsMun)))
                     ),
-                    El("vIBS", Dec(r.ValorIbs)),
+                    El("vIBS", Dec(itens.Sum(i => i.IbsCbs.ValorIbs))),
                     El("vCredPres", "0.00"),
                     El("vCredPresCondSus", "0.00")
                 ),
                 new XElement(Nfe + "gCBS",
                     El("vDif", "0.00"),
                     El("vDevTrib", "0.00"),
-                    El("vCBS", Dec(r.ValorCbs)),
+                    El("vCBS", Dec(itens.Sum(i => i.IbsCbs.ValorCbs))),
                     El("vCredPres", "0.00"),
                     El("vCredPresCondSus", "0.00")
                 )
