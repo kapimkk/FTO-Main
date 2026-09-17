@@ -30,6 +30,11 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Testes executam o script de atualização de verdade (UpdateService.BuildApplyUpdateScript). -->
+    <InternalsVisibleTo Include="FTO_App.Tests" />
+  </ItemGroup>
+
     <ItemGroup>
     <!-- Só Resource (embutido no assembly), NUNCA também Content.
          Quando o mesmo arquivo é Content, o WPF grava um AssemblyAssociatedContentFile e passa a

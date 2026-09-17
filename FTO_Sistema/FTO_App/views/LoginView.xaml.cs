@@ -22,6 +22,33 @@ namespace FTO_App.Views
         {
             InitializeComponent();
             LblVersao.Text = $"Versão {UpdateService.GetLocalVersionDisplay()}";
+            Loaded += (_, _) => MostrarResultadoUltimaAtualizacao();
+        }
+
+        /// <summary>
+        /// Fecha o ciclo da atualização: o script roda escondido depois que o app fecha, então é
+        /// na próxima abertura que o usuário fica sabendo se a troca de arquivos deu certo.
+        /// </summary>
+        private static void MostrarResultadoUltimaAtualizacao()
+        {
+            var resultado = UpdateService.ConsumirResultadoUltimaAtualizacao();
+            if (resultado is null) return;
+
+            string versao = UpdateService.GetLocalVersionDisplay();
+            if (resultado.Value.Sucesso)
+            {
+                MessageBox.Show($"Sistema atualizado com sucesso para a {versao}.",
+                    "Atualização", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            MessageBox.Show(
+                "A última atualização NÃO foi aplicada.\n\n" +
+                $"{resultado.Value.Mensagem}\n\n" +
+                $"O sistema continua na {versao}. Feche outros programas que possam estar usando a pasta " +
+                "do sistema e tente \"Atualizar sistema\" de novo.\n\n" +
+                $"Detalhes: {UpdateService.CaminhoLogAtualizacao}",
+                "Atualização", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private async void BtnAtualizarSistema_Click(object sender, RoutedEventArgs e)
