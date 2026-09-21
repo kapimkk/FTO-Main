@@ -100,6 +100,19 @@ namespace FTO_App.Views
                 return false;
             }
 
+            // O CPF/CNPJ virou opcional no cadastro de clientes — a nota é que não pode sair sem ele.
+            // (Operação com o exterior usa idEstrangeiro, que não passa por aqui.)
+            if (_nota.IdDest != "3" &&
+                !DocumentValidator.TryValidate(_nota.DestCpfCnpj, out _, out _, out string erroDoc))
+            {
+                MessageBox.Show(
+                    $"Destinatário sem CPF/CNPJ válido: {erroDoc}\n\n" +
+                    "A NF-e exige a identificação do destinatário. Edite a nota e informe o CPF ou CNPJ " +
+                    "(se o cliente foi cadastrado sem documento, complete também o cadastro dele).",
+                    "Nota Fiscal — destinatário", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
             var problemas = NotaFiscalValidacao.ValidarItens(_nota.Itens);
             if (problemas.Count > 0)
             {

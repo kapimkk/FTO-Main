@@ -96,15 +96,29 @@ namespace FTO_App.Views
                 return;
             }
 
-            if (!DocumentValidator.TryValidate(TxtCpfCnpj.Text, out string tipo, out string docFmt, out string erroDoc))
+            // CPF/CNPJ é opcional no cadastro — cliente de balcão muitas vezes não informa.
+            // Quem exige é a emissão: a NF-e/NFS-e cobra o documento do destinatário/tomador lá.
+            // Mas, se foi digitado, precisa ser válido: documento errado gravado é pior que vazio.
+            string tipo;
+            string docFmt;
+            if (DocumentValidator.OnlyDigits(TxtCpfCnpj.Text).Length == 0)
             {
-                MessageBox.Show(erroDoc, "CPF/CNPJ", MessageBoxButton.OK, MessageBoxImage.Warning);
-                TxtCpfCnpj.Focus();
-                return;
+                tipo = (CbTipoPessoa.SelectedItem as ComboBoxItem)?.Tag?.ToString() == "J" ? "J" : "F";
+                docFmt = "";
+                TxtCpfCnpj.Text = "";
             }
-
-            TxtCpfCnpj.Text = docFmt;
-            CbTipoPessoa.SelectedIndex = tipo == "J" ? 1 : 0;
+            else
+            {
+                if (!DocumentValidator.TryValidate(TxtCpfCnpj.Text, out tipo, out docFmt, out string erroDoc))
+                {
+                    MessageBox.Show(erroDoc + "\n\nCorrija ou deixe o campo em branco — o CPF/CNPJ é opcional.",
+                        "CPF/CNPJ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    TxtCpfCnpj.Focus();
+                    return;
+                }
+                TxtCpfCnpj.Text = docFmt;
+                CbTipoPessoa.SelectedIndex = tipo == "J" ? 1 : 0;
+            }
             string indIe = (CbIndicadorIe.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "9";
 
             var p = new Dictionary<string, object>
@@ -115,7 +129,8 @@ namespace FTO_App.Views
                 ["@nf"] = Db(TxtNomeFantasia.Text),
                 ["@co"] = Db(TxtContato.Text),
                 ["@em"] = Db(TxtEmail.Text),
-                ["@cp"] = docFmt,
+                // Vazio vai como NULL, não '' — coluna sem valor fica sem valor.
+                ["@cp"] = Db(docFmt),
                 ["@ie"] = Db(TxtIe.Text),
                 ["@im"] = Db(TxtIm.Text),
                 ["@ii"] = indIe,
@@ -382,6 +397,12 @@ namespace FTO_App.Views
             string digits = DocumentValidator.OnlyDigits(TxtCpfCnpj.Text);
             string? tipo = DocumentValidator.DetectTipoPessoa(digits);
 
+            // Com documento, o tipo sai dele. Sem documento, quem escolhe é o usuário.
+            CbTipoPessoa.IsEnabled = digits.Length == 0;
+            CbTipoPessoa.ToolTip = digits.Length == 0
+                ? "Sem CPF/CNPJ: escolha se é pessoa física ou jurídica"
+                : "Definido automaticamente pelo CPF/CNPJ";
+
             if (tipo == "F")
             {
                 CbTipoPessoa.SelectedIndex = 0;
@@ -414,7 +435,7 @@ namespace FTO_App.Views
             }
             else if (digits.Length == 0)
             {
-                LblDocStatus.Text = quiet ? "" : "Informe CPF (11) ou CNPJ (14)";
+                LblDocStatus.Text = quiet ? "" : "Opcional — obrigatório só para emitir NF-e/NFS-e";
                 LblDocStatus.Foreground = (Brush)FindResource("SecondaryTextBrush");
             }
             else

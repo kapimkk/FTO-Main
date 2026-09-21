@@ -104,8 +104,8 @@
                             <WrapPanel>
                                 <StackPanel Width="140" Margin="0,0,10,8">
                                     <TextBlock Text="Tipo" Margin="0,0,0,2"/>
-                                    <ComboBox x:Name="CbTipoPessoa" SelectedIndex="0" IsEnabled="False"
-                                              ToolTip="Definido automaticamente pelo CPF/CNPJ">
+                                    <ComboBox x:Name="CbTipoPessoa" SelectedIndex="0"
+                                              ToolTip="Sem CPF/CNPJ: escolha se é pessoa física ou jurídica">
                                         <ComboBoxItem Content="Física" Tag="F"/>
                                         <ComboBoxItem Content="Jurídica" Tag="J"/>
                                     </ComboBox>
@@ -123,7 +123,7 @@
                                     <TextBox x:Name="TxtNomeFantasia" Style="{StaticResource ModernTextBox}"/>
                                 </StackPanel>
                                 <StackPanel Width="280" Margin="0,0,10,8">
-                                    <TextBlock Text="CPF / CNPJ *" Margin="0,0,0,2"/>
+                                    <TextBlock Text="CPF / CNPJ (opcional)" Margin="0,0,0,2"/>
                                     <DockPanel>
                                         <Button Content="Buscar CNPJ" DockPanel.Dock="Right" Width="100" Margin="6,0,0,0"
                                                 Style="{StaticResource ToolbarButtonStyle}"
